@@ -1,0 +1,267 @@
+
+
+/*
+
+Use . before something for a class
+Use # before something for an id
+
+*/
+
+/*:root {
+  --col1: #F1828D; /* Color used on attached nodes, DARK
+  --col2: #765D69; /* Color on buttons, DARK
+  --col3: #FEFAD4; /* Color on background, LIGHTEST
+  --col4: #765D69; /* Panel heading + plotting color + nodes of interest in guide, DARKEST
+  --col5: #FCD0BA; /* Color on panel packground + on detached nodes, LIGHT
+  --col6: #FFFFFF; /* Color on panel title
+}*/
+
+/*:root {
+  --col1: #77A6F7; /* Color used on attached nodes, DARK
+  --col2: #00887A; /* Color on buttons, DARK
+  --col3: #FFFFFF; /* Color on background, LIGHTEST
+  --col4: #00887A; /* Panel heading + plotting color + nodes of interest in guide, DARKEST
+  --col5: #FFCCBC; /* Color on panel packground + on detached nodes, LIGHT
+  --col6: #FFFFFF; /* Color on panel title
+}*/
+
+:root {
+  --col1: #E85A4F; /* Color used on attached nodes, DARK */
+  --col2: #8E8D8A; /* Color on buttons, DARK */
+  --col3: #EAE7DC; /* Color on background, LIGHTEST */
+  --col4: #8E8D8A; /* Panel heading + plotting color + nodes of interest in guide, DARKEST */
+  --col5: #FFFFFF; /* Color on panel packground + on detached nodes, LIGHT */
+  --col6: #FFFFFF; /* Color on panel title */
+}
+
+
+/* ------------- General things -------------- */
+
+body {
+  background-color: var(--col3); /* col3 */
+  color: black;
+}
+
+.disabled {
+  color: #666666;
+}
+
+.fix_height_12{
+  min-height: 12px;
+  max-height: 12px;
+}
+
+.fix_height_45{
+  min-height: 45px;
+  max-height: 45px;
+}
+
+/*-------------- Button styles --------------*/
+
+/* Default button */
+.button1 {
+    color: #ffffff;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    border: 0;
+    opacity: 0.8;
+    border-radius: 0;
+    float: left;
+    text-transform: uppercase;
+    /*font-size: 15px;*/
+    /*display: block;*/
+    /* filter: brightness(1); */
+ }
+.button1:disabled {
+    color: white;
+    opacity: 0.5;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    text-transform: uppercase;
+ }
+.button1:hover {
+  background-color: var(--col2); /* col2 */
+  color: white;
+  opacity: 1;
+  border-color: black;
+  text-transform: uppercase;
+}
+.button1:disabled:hover {
+    color: white;
+    opacity: 0.5;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    text-transform: uppercase;
+}
+
+/* Guide button */
+.button_g {
+    color: #ffffff;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    border: 0;
+    opacity: 0.8;
+    border-radius: 0;
+    text-transform: uppercase;
+    /*display: block;*/
+    /* filter: brightness(1); */
+ }
+.button_g:disabled {
+    color: white;
+    opacity: 0.5;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    text-transform: uppercase;
+ }
+.button_g:hover {
+  background-color: var(--col2); /* col2 */
+  color: white;
+  opacity: 1;
+  border-color: black;
+  text-transform: uppercase;
+}
+.button_g:disabled:hover {
+    color: white;
+    opacity: 0.5;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    text-transform: uppercase;
+}
+
+.button_g2 {
+    color: #ffffff;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    border: 0;
+    opacity: 0.8;
+    border-radius: 0;
+    text-transform: none;
+    /*display: block;*/
+    /* filter: brightness(1); */
+ }
+
+/*Quit-button*/
+.button_quit {
+    color: #ffffff;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    border: 0;
+    opacity: 0.8;
+    border-radius: 0;
+    text-transform: uppercase;
+ }
+.button_quit:disabled {
+    color: #ffffff;
+    background-color: var(--col2); /* col2 */
+    border-color: #000000;
+    opacity: 0.8;
+    text-transform: uppercase;
+ }
+.button_quit:hover {
+  background-color: var(--col2); /* col3 */
+  color: white;
+  opacity: 1;
+  border-color: black;
+  text-transform: uppercase;
+}
+.button_quit:disabled:hover {
+  background-color: var(--col2); /* col3 */
+  color: white;
+  border-color: black;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+
+/* ----------- sidebar panel styles ---------- */
+
+
+.panel-title {
+  color: var(--col6); /* col6 */
+}
+
+.panel {
+  /*border: 1px solid var(--col4); /* col4 */
+  border: 0;
+  border-radius: 0;
+}
+
+/*.panel-default > .panel-title {
+
+}*/
+
+.panel-body {
+    background-color: var(--col5); /* col5 */
+    color: black;
+    border: 0;
+}
+.panel-default > .panel-heading {
+    background-color: var(--col4); /* col4 */
+    color: white;
+    border: 0;
+    border-radius: 0;
+}
+
+
+/* -------- Checkbox for basemodel ---------*/
+
+.basemodelradio {
+  font-size: 12px;
+}
+
+
+/* -------- Numeric inputs ---------*/
+
+input[type=number] {
+  background-color: white;
+  border: 1px solid "#D5D4D1";
+  /*border:0;*/
+  color: black;
+  margin-top: -6px;
+  margin-bottom: -15px;
+}
+
+input[type=number]:focus {
+  background-color: white;
+  border: 1px solid var(--col2);
+  box-shadow: 0 0 5px #D5D4D1;
+}
+
+/* Make size of all numeric input labels smaller */
+.control-label[for=median] {
+  font-size: 12px;
+}
+.control-label[for=par1] {
+  font-size: 12px;
+}
+.control-label[for=par2] {
+  font-size: 12px;
+}
+.control-label[for=par1_guide] {
+  font-size: 12px;
+}
+.control-label[for=par2_guide] {
+  font-size: 12px;
+}
+
+.control-label[for=basemodel] {
+  font-size: 12px;
+}
+
+
+
+
+/* -------- Other things ---------*/
+
+#guide_message {
+  background-color: white;
+  /*border: 1px solid black;*/
+  padding: 10px;
+  color: black;
+}
+
+
+
+
+
+
