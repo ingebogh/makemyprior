@@ -1,0 +1,163 @@
+---
+title: "Neonatal mortality"
+author: Ingeborg Gullikstad Hem (ingeborg.hem@ntnu.no)
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+bibliography: references.bib
+vignette: >
+  %\VignetteIndexEntry{neonatal_mortality}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+```{r setup}
+library(makemyprior)
+```
+
+
+### Model
+
+We carry out a similar study of neonatal mortality in Kenya as one by @fuglstad2020. We model the neonatal mortality,
+defined as the number of deaths if infants the first month of live per birth.
+We use the linear predictor:
+\[
+  \eta_{i,j} = \mathrm{logit}(p_{i,j}) = \mu + x_{i,j} \beta + u_i + v_i + \nu_{i,j}, \ i = 1, \dots, n, \ j = 1, \dots, m_i,
+\]
+and use $y_{i,j} | b_{i,j}, p_{i,j} \sim \mathrm{Binomial}(b_{i,j}, p_{i,j})$, for cluster $j$ in county $i$. We have between $m_i \in \{6, 7, 8\}
+clusters in each of the $n = 47$ counties (see e.g. @fuglstad2020 for a map of the counties).
+
+* $b_{i,j}$ is the number of live births,
+* $y_{i,j}$ is the number of neonatal deaths,
+* $\mu$ is an intercept with a $\mathcal{N}(0, 1000^2)$ prior,
+* $\beta$ is a coefficient with a $\mathcal{N}(0, 1000^2)$ prior for $x_{i,j}$, which is an indicator classifying cluster $j$ in county $i$ as urban ($x_{i,j} = 1$) or rural ($x_{i,j} = 0$),
+* $\nu_i \sim \mathcal{N}_n(0, \sigma_{\nu}^2)$ is an i.i.d. random effect for cluster
+* $v_i \sim \mathcal{N}_n(0, \sigma_v^2)$ is an i.i.d. random effect for county, and
+* $\mathbf{u}$ is a Besag effect on county with variance $\sigma_u^2$ and a sum-to-zero constraint.
+
+We need a neighborhood graph for the counties, which is found in ``makemyprior``. We scale the Besag effect to have 
+a generalized variance equal to $1$.
+
+```{r}
+# neighborhood graph
+graph_path <- paste0(path.package("makemyprior"), "/neonatal.graph")
+
+formula <- y ~ urban + mc(nu) + mc(v) +
+  mc(u, model = "besag", graph = graph_path, scale.model = TRUE)
+
+```
+
+We use the dataset ``neonatal_mortality`` in ``makemyprior``, and present three priors.
+We do not carry out inference, as it takes time and will slow down the compilation of the vignettes by a lot,
+but include code so the user can run the inference themselves.
+
+
+### Prior 1
+
+We prefer coarser over finer unstructured effects, and unstructured over structured effects.
+That means that we prefer $\mathbf{v}$ over $\mathbf{u}$ and $\mathbf{v} + \mathbf{u}$ over $\mathbf{\nu}$ in
+the prior.
+We achieve this with a prior that distributes the county variance with shrinkage towards 
+the unstructured county effect, and the total variance towards the county effects.
+Following @fuglstad, we induce shrinkage on the total variance such that we have a 
+90\% credible interval of
+$(0.1, 10)$ for the effect of $\exp(v_i + u_i + \nu_{i,j})$. We use 
+the function ``find_pc_prior_param``
+in ``makemyprior`` to find the parameters for the PC prior:
+
+
+```{r}
+set.seed(1)
+find_pc_prior_param(lower = 0.1, upper = 10, prob = 0.9, N = 2e5)
+
+```
+
+
+```{r}
+prior1 <- make_prior(
+  formula, neonatal_data, family = "binomial",
+  prior = list(tree = "s1 = (u, v); s2 = (s1, nu)",
+               w = list(s1 = list(prior = "pc0", param = 0.25),
+                        s2 = list(prior = "pc1", param = 0.75)),
+               V = list(s2 = list(prior = "pc",
+                                  param = c(3.35, 0.05)))))
+
+prior1
+
+```
+
+```{r, fig.width = 5, fig.height = 3, eval = FALSE}
+plot_prior(prior1) # or plot(prior1)
+```
+
+```{r, fig.width = 5, fig.height = 3, eval = FALSE}
+plot_tree_structure(prior1)
+```
+
+
+Inference can be carried out by running:
+
+```{r, eval = FALSE}
+posterior1 <- inference_stan(prior1, iter = 15000, warmup = 5000,
+                            seed = 1, init = "0", chains = 1)
+
+plot_posterior_stan(posterior1, param = "prior", plot_prior = TRUE)
+
+```
+
+For inference with INLA:
+
+```{r, eval = FALSE}
+posterior1_inla <- inference_inla(prior1, Ntrials = neonatal_data$Ntrials)
+plot_posterior_stdev(posterior1_inla)
+
+```
+
+Note the ``Ntrials`` argument fed to ``inference_inla``.
+
+### Prior 2
+
+
+We use a prior without any knowledge, and use the default prior:
+
+```{r}
+prior2 <- make_prior(formula, neonatal_data, family = "binomial")
+
+prior2
+
+```
+
+
+
+```{r, fig.width = 5, fig.height = 3, eval = FALSE}
+plot_prior(prior2)
+```
+
+```{r, fig.width = 5, fig.height = 3, eval = FALSE}
+plot_tree_structure(prior2)
+```
+
+
+Inference can be carried out by running:
+
+```{r, eval = FALSE}
+posterior2 <- inference_stan(prior2, iter = 15000, warmup = 5000,
+                            seed = 1, init = "0", chains = 1)
+
+plot_posterior_stan(posterior2, param = "prior", plot_prior = TRUE)
+
+```
+
+```{r}
+sessionInfo()
+```
+
+### References

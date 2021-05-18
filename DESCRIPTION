@@ -1,28 +1,33 @@
 Package: makemyprior
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: Intuitive Construction of Joint Priors for Variance Parameters
+Version: 1.0.0
+Authors@R: c(
+    person("Ingeborg Gullikstad", "Hem", email = "ingeborg.hem@ntnu.no", role = c("cre", "aut")),
+    person("Geir-Arne", "Fuglstad", role = "aut"),
+    person("Andrea", "Riebler", role = "aut") )
+Description: Tool for easy prior construction and visualization. It helps to formulates joint prior distributions for variance parameters in latent Gaussian models. The resulting prior is robust and can be created in an intuitive way. A graphical user interface (GUI) can be used to choose the joint prior, where the user can click through the model and select priors. An extensive guide is available in the GUI. The package allows for direct inference with the specified model and prior. Using a hierarchical variance decomposition, we formulate a joint variance prior that takes the whole model structure into account. In this way, existing knowledge can intuitively be incorporated at the level it applies to. Alternatively, one can use independent variance priors for each model components in the latent Gaussian model.
+License: GPL (>= 2)
+Date: 2021-05-18
 Encoding: UTF-8
 LazyData: true
-Suggests: 
-    knitr,
-    rmarkdown,
-    testthat (>= 2.1.0)
-Depends:
+Imports:
     ggplot2,
-    ggpubr,
     Matrix,
-    R (>= 4.0.2),
+    knitr,
     shiny,
     shinyjs,
     shinyBS,
-    splines,
-    LaplacesDemon,
-    visNetwork
+    visNetwork,
+    rmarkdown,
+    rlang,
+    MASS,
+    testthat (>= 2.1.0)
+Suggests:
+    rstan (>= 2.21.2),
+    INLA (>= 20.03.17)
+Depends:
+    R (>= 3.6.0)
+Additional_repositories: https://inla.r-inla-download.org/R/stable/
 VignetteBuilder: knitr
-
+RoxygenNote: 7.1.1

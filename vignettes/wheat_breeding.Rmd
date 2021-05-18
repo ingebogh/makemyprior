@@ -1,0 +1,158 @@
+---
+title: "Wheat breeding"
+author: Ingeborg Gullikstad Hem (ingeborg.hem@ntnu.no)
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+bibliography: references.bib
+vignette: >
+  %\VignetteIndexEntry{wheat_breeding}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+```{r setup}
+library(makemyprior)
+```
+
+
+### Model
+
+We use a model from @hem2021; a genomic wheat breeding model with three genetic effects: additive, dominance and epistasis The model is:
+\[
+  y_i = \mu + a_i + d_i + x_i + \varepsilon_i, \ i = 1, \dots, 100,
+\]
+
+where 
+* $\mu$ is an intercept with a $\mathcal{N}(0, 1000^2)$ prior,
+* $\mathbf{a} = (a_1, \dots, a_{100}) \sim \mathcal{N}_{100}(\mathbf{0}, \sigma_{\mathrm{a}}^2 \mathbf{A})$ is the additive effect,
+* $\mathbf{d} = (d_1, \dots, d_{100}) \sim \mathcal{N}_{100}(\mathbf{0}, \sigma_{\mathrm{a}}^2 \mathbf{D})$ is the dominance effect,
+* $\mathbf{x} = (x_1, \dots, x_{100}) \sim \mathcal{N}_{100}(\mathbf{0}, \sigma_{\mathrm{a}}^2 \mathbf{X})$ is the epistasis effect, and
+* $\varepsilon_i$ is the residual effect with variance $\sigma_{\varepsilon}^2$.
+
+The covariance matrices $\mathbf{A}$, $\mathbf{D}$ and $\mathbf{X}$ are computed from the single nucleotide polymorphism (SNP) 
+matrix with thousands of genetic markers.
+
+We use the dataset ``wheat_breeding`` in ``makemyprior``, which consists of indexes for the effects and precision matrices for
+each of the genetic effects, and present three priors.
+
+We scale the precision matrices so the corresponding covariance matrices have typical variance equal to 1 with ``scale_precmat``.
+
+```{r}
+wheat_data_scaled <- wheat_data
+wheat_data_scaled$Q_a <- scale_precmat(wheat_data$Q_a)
+wheat_data_scaled$Q_d <- scale_precmat(wheat_data$Q_d)
+wheat_data_scaled$Q_x <- scale_precmat(wheat_data$Q_x)
+
+formula <- y ~
+  mc(a, model = "generic0", Cmatrix = Q_a, constr = TRUE) +
+  mc(d, model = "generic0", Cmatrix = Q_d, constr = TRUE) +
+  mc(x, model = "generic0", Cmatrix = Q_x, constr = TRUE)
+
+```
+
+We do not carry out inference, as it takes time and will slow down the compilation of the vignettes by a lot,
+but include code so the user can run the inference themselves.
+
+
+### Prior 1
+
+We do not want to say anything about the total (also called phenotypic) variance.
+We have expert knowledge saying that we want shrinkage towards the residual effect to avoid overfitting, and the
+heritability, which is the amount of phenotypic variance attributed to the genetic effects, is around 0.25.
+The additive, dominance and epistasis effects get about (85, 10, 5)\% of the genetic variance accourding to the expert.
+The expert is quite sure about these choices, and we use a concentration parameter $c$, saying how much of the density mass of the prior such that 
+$\mathrm{Prob}(\mathrm{logit}(1/4) < \mathrm{logit}(\omega_*) - \mathrm{logit}(m) < \mathrm{logit}(3/4)) = c$ for a variance proportion $\omega_*$.
+
+This information can be implemented as a prior as follows:
+
+```{r}
+prior1 <- make_prior(formula, wheat_data_scaled, prior = list(
+  tree = "s1 = (d, x); s2 = (a, s1); s3 = (s2, eps)",
+  w = list(s1 = list(prior = "pcM", param = c(0.67, 0.8)),
+           s2 = list(prior = "pcM", param = c(0.85, 0.8)),
+           s3 = list(prior = "pc0", param = 0.25))))
+
+prior1
+
+```
+
+
+```{r, fig.width = 5, fig.height = 3}
+plot_prior(prior1) # or plot(prior1)
+```
+
+```{r, fig.width = 5, fig.height = 3}
+plot_tree_structure(prior1)
+```
+
+Note that we do not fit the model in this vignette, as it takes some time.
+
+```{r, eval = FALSE}
+posterior1 <- inference_stan(prior1, iter = 15000, warmup = 5000,
+                            chains = 1, seed = 1)
+
+plot_posterior_stan(posterior1, param = "prior", prior = TRUE)
+
+```
+
+For inference with INLA:
+
+```{r, eval = FALSE}
+posterior1_inla <- inference_inla(prior1)
+plot_posterior_stdev(posterior1_inla)
+
+```
+
+### Prior 2
+
+
+We have a good intuition on the absolute magnitude of the residual and genetic effects, but since the genetic effects are confounded, 
+we want to use a prior saying that about 80\% of the genetic variance is additive effect, and shrinkage towards the additive, and
+and be ignorant about the division of dominance and epistasis.
+The residual and genetic effects are both assumed to not be much larger than 3.
+
+```{r}
+prior2 <- make_prior(formula, wheat_data_scaled, prior = list(
+  tree = "s1 = (d, x); s2 = (a, s1); (eps)",
+  w = list(s1 = list(prior = "dirichlet"),
+           s2 = list(prior = "pc1", param = c(0.8))),
+  V = list(s2 = list(prior = "pc", param = c(3, 0.05)),
+           eps = list(prior = "pc", param = c(3, 0.05)))))
+
+prior2
+
+```
+
+
+```{r, fig.width = 5, fig.height = 3}
+plot_prior(prior2)
+```
+
+```{r, fig.width = 5, fig.height = 3}
+plot_tree_structure(prior2)
+```
+
+Again we do not fit the model in this vignette, as it takes some time.
+
+```{r, eval = FALSE}
+posterior2 <- inference_stan(prior2, iter = 15000, warmup = 5000,
+                            chains = 1, seed = 1)
+
+plot_posterior_stan(posterior2, param = "prior", prior = TRUE)
+
+```
+
+```{r}
+sessionInfo()
+```
+
+### References

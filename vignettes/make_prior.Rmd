@@ -1,0 +1,327 @@
+---
+title: "Example i.i.d. model"
+author: Ingeborg Gullikstad Hem (ingeborg.hem@ntnu.no)
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+bibliography: references.bib
+vignette: >
+  %\VignetteIndexEntry{make_prior}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+```{r setup}
+library(makemyprior)
+```
+
+
+In this vignette, we show how to use ``makemyprior``. This is a package for easy and transparent prior
+construction, and uses the hierarchical decomposition framework of @fuglstad2020.
+We do not go into details on the framework and refer to
+@fuglstad2020 for details about the HD prior.
+
+Note that you can also use the standard way of specifying priors component-wise on individual variance components, we show this [below](#additional examples).
+
+## Prior options
+
+Before going into the details on how to use the software, we give you a short introduction to
+the HD prior. We also refer to @fuglstad2020 for details.
+
+We use the penalized complexity (PC) prior [@simpson2017] 
+to induce shrinkage. This can make a robust prior that
+stabilizes the inference. We do not go into details on the PC prior here, but the following priors are
+available in ``makemyprior``:
+
+Consider a random intercept model 
+$y_{i,j} = a_i + \varepsilon_{i,j}$ for $i,j = 1, \dots, 10$,
+where $a_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_{\mathrm{a}}^2)$ is a group
+effect and
+$\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_{\varepsilon}^2)$ is
+a residual effect.
+We define the variance proportion $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = \frac{\sigma_{\mathrm{a}}^2}{\sigma_{\mathrm{a}}^2 + \sigma_{\varepsilon}^2}$.
+Then we
+denote the
+different PC prior distributions as:
+* $\sigma_{\mathrm{*}} \sim \mathrm{PC}_{\mathrm{0}}(U, \alpha)$, with 
+	$\mathrm{Prob}(\sigma_{\mathrm{*}} > U) = \alpha$, 
+	and shrinkage towards $\sigma_{\mathrm{*}} = 0$.
+* $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} \sim \mathrm{PC}_{\mathrm{0}}(m)$ with 
+	$\mathrm{Prob}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} > m) = 0.5$ so that $m$ defines the median, and shrinkage towards
+	$\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = 0$, 
+	i.e., the base model is a model with only $\bm{\varepsilon}$.
+* $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} \sim \mathrm{PC}_{\mathrm{1}}(m)$ with 
+	$\mathrm{Prob}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} > m) = 0.5$ so that $m$ defines the median, and shrinkage towards
+	$\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = 1$, 
+	i.e., the base model is a model with only $\bm{a}$.
+* $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} \sim \mathrm{PC}_{\mathrm{M}}(m, c)$ with
+	$\mathrm{Prob}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} > m) = 0.5$ and
+	$\mathrm{Prob}(\mathrm{logit}(1/4) < \mathrm{logit}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}}) - \mathrm{logit}(m) < \mathrm{logit}(3/4)) = c$
+	so that $m$ defines the median, and $c$ says something about how concentrated the distribution is
+	around the median. The shrinkage is towards $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = m$,
+	i.e., the base model is a combination of the effects $\bm{a}$ and $\bm{\varepsilon}$.
+
+Note that $\mathrm{PC}_{\mathrm{1}}(m)$ on $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}}$ is equivalent to
+$\mathrm{PC}_{\mathrm{0}}(1-m)$ on $1-\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = \omega_{\frac{\mathrm{\varepsilon}}{\mathrm{a+\varepsilon}}}$.
+
+The priors listed above are denoted ``pc``, ``pc0``. ``pc1``, and ``pcM`` in ``makemyprior``.
+
+
+
+### Model description
+
+Consider the hierarchical model for the $n = m \cdot p$ observations $y_{i,j}$, $i = 1, \ldots p$ and $j = 1, \ldots, m$,  given by
+\begin{align*}
+    y_{i,j}|\eta_{i,j}, \sigma_{\varepsilon}^2 &\sim \mathcal{N}(\eta_{i,j}, \sigma_{\varepsilon}^2), \\
+    \eta_{i,j} &= \mu + x_i \beta + a_i + b_j,
+\end{align*}
+where $\mu$ is an intercept, $x_i$ is a covariate with coefficient $\beta$, 
+and $a_1, a_2, \ldots, a_p \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_\mathrm{a}^2)$
+and $b_1, b_2, \ldots, b_m \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_\mathrm{b}^2)$ are random effects.
+The residuals $\varepsilon_1, \varepsilon_2, \dots, \varepsilon_n
+\sim \mathcal{N}(0, \sigma_{\varepsilon}^2)$.
+
+
+### Make data and linear predictor
+
+First we specify our model by making a formula object (see ``?mc``):
+
+```{r}
+formula <- y ~ x + mc(a) + mc(b)
+```
+
+Then we put our data in a ``list`` (a ``data.frame`` can also be used). We simulate the data here.
+
+```{r}
+p <- 10
+m <- 10
+n <- m*p
+
+set.seed(1)
+data <- list(a = rep(1:p, each = m),
+             b = rep(1:m, times = p),
+             x = runif(n))
+
+data$y <- data$x + rnorm(p, 0, 0.5)[data$a] +
+  rnorm(m, 0, 0.3)[data$b] + rnorm(n, 0, 1)
+```
+
+
+### Make prior
+
+Then we make the prior object using the function ``make_prior``. It needs the arguments we 
+made above, ``formula`` and ``data``, a likelihood family (Gaussian likelihood is the default),
+and optional priors for intercept and covariate coefficients (both have a Gaussian distribution with $0$ mean and a standard deviation of $1000$).
+Note that the observations ``y`` are *not* used to create the prior, but is included in the
+prior object as all the information about the inference is stored there.
+
+```{r}
+prior <- make_prior(formula, data, family = "gaussian",
+                    intercept_prior = c(0, 1000),
+                    covariate_prior = list(x = c(0, 100)))
+```
+
+This gives the default prior, which is a prior where all model effects are assigned an equal amount of variance through a
+symmetric Dirichlet distribution. The default prior on the total variance depends on the likelihood. See Section [default settings](#default) for details on
+default settings.
+
+We print details about the prior, 
+plot the prior to see how the distributions look, and
+plot the prior tree structure:
+
+```{r, fig.width = 5, fig.height = 2}
+summary(prior)
+
+plot_prior(prior) # or plot(prior)
+plot_tree_structure(prior)
+```
+
+Now we can use a graphical interface to choose our prior. We do not show this in the vignette, but
+it can be opened with the following command:
+
+```{r, eval = FALSE}
+new_prior <- makemyprior_gui(prior)
+```
+
+The output (which we store in ``new_prior``) is of the same class as the output from ``make_prior``, and can be used directly for [inference](#inference).
+
+
+
+With the following command, we specify this prior:
+
+\begin{equation}
+    \omega_{\frac{\mathrm{a}}{\mathrm{a+b}}} \sim \mathrm{PC}_{\mathrm{M}}(0.7, 0.5),\,  \omega_{\frac{\mathrm{a+b}}{\mathrm{a+b} + \varepsilon}} \sim \mathrm{PC}_{\mathrm{0}}(0.25),\,\text{and}\, \sigma_{\mathrm{a+b} + \varepsilon} \sim \mathrm{PC}_{\mathrm{0}}(3, 0.05). 
+    \label{eq:software:examplemodel_prior}
+\end{equation}
+
+
+
+```{r, fig.width = 5, fig.height = 2}
+
+new_prior <- make_prior(
+  formula, data,
+  prior = list(
+    tree = "s1 = (a, b); s2 = (s1, eps)",
+    w = list(s1 = list(prior = "pcM", param = c(0.7, 0.5)),
+             s2 = list(prior = "pc1", param = 0.75)),
+    V = list(s2 = list(prior = "pc0", param = c(3, 0.05)))
+    ),
+    covariate_prior = list(x = c(0, 100))
+)
+
+summary(new_prior)
+plot_prior(new_prior)
+plot_tree_structure(new_prior)
+
+```
+
+
+### Inference
+
+We can carry out inference with Stan [@carpenter2017] and INLA [@rue2009].
+Note that we in this vignette do not run the inference, as it takes time and will slow
+down the compilation of the vignette and thus the package download, but the code is
+included below and the user can carry out the inference with that.
+
+#### Stan
+
+First, we look at inference with Stan. We must start by compiling the Stan-code:
+
+```{r, eval = FALSE}
+compile_stan(save = TRUE)
+```
+
+Then we can do the inference:
+
+```{r, eval = FALSE}
+posterior1 <- inference_stan(new_prior, iter = 1e4, chains = 1, seed = 1)
+```
+
+We can look at the graphs of the posterior:
+
+```{r, fig.width = 5, fig.height = 2, eval = FALSE}
+plot_posterior_stan(posterior1, param = "prior", prior = TRUE) # on the scale of the prior, together with the prior
+plot_posterior_stan(posterior1, param = "variance") # on variance scale
+plot_fixed_posterior(posterior1) # fixed effects
+```
+
+We can also sample from the prior and compare on variance scale:
+```{r, fig.width = 5, fig.height = 2, eval = FALSE}
+prior1 <- inference_stan(new_prior, use_likelihood = FALSE, iter = 1e4, chains = 1, seed = 1)
+plot_several_posterior_stan(list(Prior = prior1, Posterior = posterior1))
+```
+
+#### INLA
+
+Inference with INLA is carried out in a similar way:
+
+```{r, eval = FALSE}
+posterior2 <- inference_inla(new_prior)
+```
+
+And we can look at some posterior diagnostics. Note that we can only look at the posteriors on 
+variance/precision/standard deviation scale when doing inference with INLA.
+
+```{r, fig.width = 5, fig.height = 2, eval = FALSE}
+plot_posterior_variance(posterior2) # on variance scale
+plot_fixed_posterior(posterior1)
+```
+
+
+See ``vignette("plotting", package = "makemyprior")`` for more details on functions for plotting.
+
+
+### Default settings {#default}
+
+* If no prior is specified (neither tree structure nor priors), the prior will be
+    a joint prior where all latent components (including
+    a possible residual effect) get an equal amount of variance in the prior.
+* The prior on the total variance (top nodes) varies with likelihood:
+    * Jeffreys' prior for Gaussian likelihood for a tree structure with one tree, $\mathrm{PC}_{\mathrm{0}}(3, 0.05)$ otherwise.
+    * $\mathrm{PC}_{\mathrm{0}}(1.6, 0.05)$ for binomial likelihood.
+    * $\mathrm{PC}_{\mathrm{0}}(1.6, 0.05)$ for Poisson likelihood.
+*  The default prior on individual variance (singletons) varies with likelihood: 
+    * $\mathrm{PC}_{\mathrm{0}}(3, 0.05)$ for Gaussian likelihood.
+    * $\mathrm{PC}_{\mathrm{0}}(1.6, 0.05)$ for binomial likelihood.
+    * $\mathrm{PC}_{\mathrm{0}}(1.6, 0.05)$ for Poisson likelihood.
+* The default prior on a variance proportion (split node) is a Dirichlet prior assigning equal amount
+    of variance to each of the model components involved in the split.
+
+See:
+
+```{r}
+?makemyprior_models
+```
+
+for details on default settings.
+
+
+### Additional examples
+
+We include some additional examples on how to create various prior distributions. We still use the same model and data, 
+and change the joint prior on the variances. We do not run inference.
+*Note that the values of the priors are NOT based on knowledge about the model*, 
+but chosen to show the
+different options of the package. 
+See 
+``vignette("wheat_breeding", package = "makemyprior")``,
+``vignette("latin_square", package = "makemyprior")``, and
+``vignette("neonatal_mortality", package = "makemyprior")``
+for examples
+where we discuss how expert knowledge can be used to set the priors.
+
+
+
+```{r, fig.width = 5, fig.height = 2}
+
+prior2 <- make_prior(formula = formula, data = data,
+                     prior = list(tree = "(a); (b); (eps)",
+                                  V = list(
+                                    a = list(prior = "pc", param = c(1, 0.05)),
+                                    b = list(prior = "pc", param = c(2, 0.05)),
+                                    eps = list(prior = "pc", param = c(3, 0.05))
+                                  )))
+
+plot_prior(prior2)
+plot_tree_structure(prior2)
+
+```
+
+
+```{r, fig.width = 5, fig.height = 2}
+
+prior3 <- make_prior(formula = formula, data = data,
+                     prior = list(tree = "s1 = (a, b); (eps)",
+                                  V = list(
+                                    s1 = list(prior = "pc", param = c(3, 0.05)),
+                                    eps = list(prior = "pc", param = c(3, 0.05))),
+                                  w = list(
+                                    s1 = list(prior = "pcM", param = c(0.5, 0.8))
+                                  )
+                                  ))
+
+plot_prior(prior3)
+plot_tree_structure(prior3)
+
+```
+
+
+```{r}
+sessionInfo()
+```
+
+### References
+
+
+
+
+
+
