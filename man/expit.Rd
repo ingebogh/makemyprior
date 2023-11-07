@@ -7,7 +7,7 @@
 expit(x)
 }
 \arguments{
-\item{x}{Real number}
+\item{x}{Real number, or vector of reals}
 }
 \value{
 expit value
@@ -17,5 +17,6 @@ Calculates inverse logit, exp(x)/(1+exp(x)) = 1/(1+exp(-x))
 }
 \examples{
 expit(2)
+expit(seq(-5, 5, 1))
 
 }

@@ -7,10 +7,10 @@
 inference_inla(prior_obj, use_likelihood = TRUE, print_prior = TRUE, ...)
 }
 \arguments{
-\item{prior_obj}{An object from \link[makemyprior]{make_prior}, from \link[makemyprior]{makemyprior_gui}
-(both with and without the "Close and run" option), from \link[makemyprior]{inference_stan}, or from \link[makemyprior]{inference_inla} (for refitting model)}
+\item{prior_obj}{An object from \link[makemyprior]{make_prior}, from \link[makemyprior]{makemyprior_gui}, from \link[makemyprior]{inference_stan}, or from \link[makemyprior]{inference_inla} (for refitting model)}
 
-\item{use_likelihood}{Whether to sample from the prior only (FALSE, can be used for e.g. debugging or to look at the priors on variance parameters when using an HD prior), or to use the likelihood and data to get the posterior (TRUE, default).}
+\item{use_likelihood}{Whether to sample from the prior only (FALSE, can be used for e.g. debugging or to look at the priors on variance parameters when using an HD prior,
+see also Details), or to use the likelihood and data to get the posterior (TRUE, default).}
 
 \item{print_prior}{Whether to print a text with the chosen prior or not (default TRUE)}
 
@@ -30,20 +30,21 @@ You must have INLA installed to run this. INLA can be installed with:
 Also see \href{https://www.r-inla.org/}{r-inla.org}.
 }
 \details{
-We cannot sample from a Jeffreys' prior since it is improper.
-If Jeffreys' prior is used for the total variance, the prior will be changed to a Gaussian(0,1) prior on
+Jeffreys' prior is improper. If \code{use_likelihood = FALSE} and Jeffreys' prior is used for the total variance, the prior will be changed to a Gaussian(0,1) prior on
 the log total variance. This means that it does not make sense to look at the variances/standard deviations/precisions,
-but the variance proportions will be correct.
+but the variance proportions will be correct. Note that this is only an issue when sampling from the prior
+(i.e., not using the likelihood).
 }
 \examples{
 \dontrun{
 
 vignette("make_prior", package = "makemyprior")
+}
 
 ex_prior <- makemyprior_example_model()
-
-posterior <- inference_inla(ex_prior)
-plot(posterior)
+if (interactive() && requireNamespace("INLA")){
+  posterior <- inference_inla(ex_prior)
+  plot(posterior)
 }
 
 }

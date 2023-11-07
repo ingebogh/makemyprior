@@ -46,7 +46,7 @@ For specifying details on this latent component.
 }
 \description{
 Function for defining a latent component for the HD prior package. All model components must be specified, and if an HD
-prior is used, this is specified later
+prior is used, this is specified later. See \link[makemyprior]{make_prior} for more details and examples.
 }
 \details{
 The graph argument is a path to a file describing neighbouring relationship on the following form:

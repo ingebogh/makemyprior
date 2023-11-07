@@ -17,13 +17,13 @@ inference_stan(
 from \link[makemyprior]{inference_stan}, or from \link[makemyprior]{inference_inla} (for refitting model)}
 
 \item{use_likelihood}{Whether to sample from the prior only (\code{FALSE}, can be used for e.g.
-debugging or to look at the priors on variance parameters when using an HD prior), or
+debugging or to look at the priors on variance parameters when using an HD prior, see also Details), or
 to use the likelihood and data to get the posterior (\code{TRUE}, default).}
 
 \item{print_prior}{Whether to print a text with the chosen prior or not (default \code{TRUE})}
 
 \item{path}{Path to folder. See \link[makemyprior]{compile_stan}. Only necessary if compiled code is
-stored somewhere else than in the package directory or tempdir()}
+stored somewhere else than in \code{tempdir()} or the package directory (checking \code{tempdir()} first).}
 
 \item{...}{Other arguments to be sent to \link[rstan]{sampling}. Useful arguments include:
 \describe{
@@ -33,7 +33,8 @@ stored somewhere else than in the package directory or tempdir()}
   \item{\code{init}}{initial value of the model parameters on internal parameterization (log-variances and covariate coefficients)}
   \item{\code{seed}}{seed value for random number generation}
 }
-See \link[rstan]{sampling} for more details.}
+See \link[rstan]{sampling} for more details. Note that for inference with \code{stan}, the \code{Ntrials} argument must be included in the data object, and
+cannot be provided to this function.}
 }
 \value{
 A named list with a prior object (\code{prior}), a stan-object (\code{stan}) and some data stan requires (\code{stan_data}).
@@ -44,20 +45,30 @@ Note that you must install Stan: \code{install.packages("rstan")}, see \href{htt
 }
 \details{
 We cannot sample from a Jeffreys' prior since it is improper.
-If Jeffreys' prior is used for the total variance, the prior will be changed to a Gaussian(0,1) prior on
+If \code{use_likelihood = FALSE} and Jeffreys' prior is used for the total variance, the prior will be changed to a Gaussian(0,1) prior on
 the log total variance. This means that it does not make sense to look at the variances/standard deviations/precisions,
-but the variance proportions will be correct.
+but the variance proportions will be correct. Note that this is only an issue when sampling from the prior
+(i.e., not using the likelihood).
 }
 \examples{
 \dontrun{
 
 vignette("make_prior", package = "makemyprior")
+}
 
 ex_prior <- makemyprior_example_model()
+if (interactive() && requireNamespace("rstan")){
+  posterior <- inference_stan(ex_prior, iter = 100)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  plot(posterior)
+}
+
+\dontrun{
 
 posterior <- inference_stan(ex_prior, use_likelihood = TRUE, iter = 1e4, chains = 1, seed = 1)
 plot(posterior)
 }
+
 
 }
 \keyword{rstan}

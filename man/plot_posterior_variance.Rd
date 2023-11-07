@@ -23,14 +23,18 @@ See also \link[makemyprior]{makemyprior_plotting}.
 Plotting posterior variances, standard deviations or precisions
 }
 \examples{
-\dontrun{
 
-ex_prior <- makemyprior_example_model()
-res_stan <- inference_stan(ex_prior)
-res_inla <- inference_inla(ex_prior)
-plot_posterior_variance(res_stan)
-plot_posterior_variance(res_inla)
+if (interactive() && requireNamespace("rstan")){
+  ex_prior <- makemyprior_example_model()
+  res_stan <- inference_stan(ex_prior, iter = 100)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  plot_posterior_variance(res_stan)
+}
 
+if (interactive() && requireNamespace("INLA")){
+  ex_prior <- makemyprior_example_model()
+  res_inla <- inference_inla(ex_prior)
+  plot_posterior_variance(res_inla)
 }
 
 }

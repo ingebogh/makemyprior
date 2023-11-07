@@ -15,7 +15,7 @@ eval_pc_prior(x, obj, param, logitscale = FALSE)
 \code{w[..]} part to indicate that it is a variance proportion, but can be included). Print the prior object
 to see syntax for each weight.}
 
-\item{logitscale}{Return prior on logitscale? (default \code{FALSE}).}
+\item{logitscale}{Is the input \code{x} on logit-scale? (default \code{FALSE}).}
 }
 \value{
 Returns density for the given variance proportion.

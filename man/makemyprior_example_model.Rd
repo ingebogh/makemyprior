@@ -17,13 +17,13 @@ Creating a simple prior object using \link[makemyprior]{make_prior}.
 Used in examples of other functions in the package.
 }
 \details{
-See example for what model is made.
+See the example for what model is made.
 }
 \examples{
-\dontrun{
 
 ex_model <- makemyprior_example_model()
 
+\dontrun{
 # The function corresponds to the following model call:
 
 set.seed(1)

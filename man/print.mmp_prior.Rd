@@ -24,13 +24,18 @@ Returns input object invisible.
 Print
 }
 \examples{
-\dontrun{
 pri <- makemyprior_example_model()
 pri # or print(pri)
-res_stan <- inference_stan(pri)
-res_stan # or print(res_stan)
-res_inla <- inference_inla(pri)
-res_inla # or print(res_inla)
+
+if (interactive() && requireNamespace("rstan")){
+  res_stan <- inference_stan(ex_prior, iter = 100)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  res_stan # or print(res_stan)
+}
+
+if (interactive() && requireNamespace("INLA")){
+  res_inla <- inference_inla(pri)
+  res_inla # or print(res_inla)
 }
 
 }

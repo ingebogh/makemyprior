@@ -1,6 +1,5 @@
 
 
-// this is for gaussian likelihood, make separate file for other likelihoods
 
 
 functions {

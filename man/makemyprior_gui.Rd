@@ -21,17 +21,17 @@ Can also be sent to \link[makemyprior]{makemyprior_gui} again.
 }
 \description{
 This functions opens a shiny app where the specified prior can be seen, and changed.
-Returns an invisible object,
 }
 \examples{
 \dontrun{
 
 vignette("make_prior", package = "makemyprior")
 
-ex_prior <- makemyprior_example_model()
+}
 
-new_prior <- makemyprior_gui(ex_prior)
-
+if (interactive()){
+   ex_prior <- makemyprior_example_model()
+   new_prior <- makemyprior_gui(ex_prior)
 }
 
 }

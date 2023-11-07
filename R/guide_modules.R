@@ -11,13 +11,13 @@ opening_guide <- function(guide_data){
     gd$x$counter_next <- tmp
 
     showModal(modalDialog(
-      paste("You will now be guided though your prior specification, first you specify the model structure using a node tree,",
+      paste("You will now be guided though your prior specification. First you specify the model structure using a node tree,",
             "then you choose prior distributions for each model components based on your knowledge about the model,",
             "and at last you get to see the resulting prior distributions based on your choices.",
-            "To quit the guide and play around on your own, click 'Quit guide' at any time."
+            "To quit the guide, click 'Quit guide' at any time (your changes may be lost if you do this before the end)."
       ),
       h5(""),
-      visNetworkOutput("graph_guide", height = 250),
+      visNetwork::visNetworkOutput("graph_guide", height = 250),
       actionButton("begin_guide", "Begin guide", class = "button_g"),
       title = "Welcome!",
       footer = actionButton("quit_guide", "Quit guide", class = "button_quit")
@@ -40,9 +40,9 @@ starting_guide <- function(guide_data, session){
   gd$x <- initialize_guide(FALSE)
   gd$x$counter_next <- tmp
 
-  updateCollapse(session, "sidebarpanel",
-                 open = c("choose_structure", "latest"),#, "closing"), # latest actions and closing should always be visible
-                 close = c("choose_priors", "variance_expressions"))
+  shinyBS::updateCollapse(session, "sidebarpanel",
+                 open = c("choose_structure"),#, "closing"), # latest actions and closing should always be visible
+                 close = c("choose_priors", "param_expressions", "prior_expressions"))
 
   gd$x$guide_is_running <- TRUE
   gd$x$ask_start_guide <- FALSE
@@ -70,7 +70,7 @@ go_to_step_2_guide <- function(prior_weight, guide_data, session){
   #removeModal(session)
   showModal(modalDialog(
     paste("Now that you are happy with the model structure, you can choose prior distributions for each tree and each individual model component.",
-          "I have already chosen robust default priors for you",
+          "Robust default priors are already chosen for you",
           "but if you have some knowledge on some of the components you should use this to improve your model.",
           "Do you want to explore the prior choices yourself, or do you want to be guided through all the choices in a step-wise manner?"
     ),
@@ -85,9 +85,9 @@ go_to_step_2_guide <- function(prior_weight, guide_data, session){
   gd$x$step1 <- FALSE
   gd$x$step2 <- TRUE
 
-  updateCollapse(session, "sidebarpanel",
-                 open = c("choose_priors", "latest"),#, "closing"), # latest actions and closing should always be visible
-                 close = c("choose_structure", "variance_expressions"))
+  shinyBS::updateCollapse(session, "sidebarpanel",
+                 open = c("choose_priors"),#, "closing"), # latest actions and closing should always be visible
+                 close = c("choose_structure", "param_expressions", "prior_expressions"))
 
   return(list(prior_weight = pd$w, guide_data = gd$x, session = session))
 
@@ -98,11 +98,11 @@ stepwise_wV_guide <- function(){
 
   #removeModal(session)
   showModal(modalDialog(
-    visNetworkOutput("graph_guide", height = 250),
+    visNetwork::visNetworkOutput("graph_guide", height = 250),
     "Now we will choose the priors for the components in the tree. You will be guided through each level in the node tree(s) from the bottom up. Then you will be guided through how to choose the priors for the total variance(s).",
     HTML("<br>"),
     actionButton("start_guide_splits", "Ok, let's go", class = "button_g"),
-    title = "Step 2: Choose tree priors",
+    title = "Step 2: Choose prior distributions",
     footer = actionButton("quit_guide", "Quit guide", class = "button_quit")
   ))
 
@@ -132,7 +132,7 @@ split_part_guide <- function(node_data, prior_weight, guide_data){
 
         #removeModal(session)
         showModal(modalDialog(
-          visNetworkOutput("graph_guide", height = 250),
+          visNetwork::visNetworkOutput("graph_guide", height = 250),
           paste("This is a multi-split, and this split is given a symmetric Dirichlet prior with equal amount of variance to each child node.", sep = "", collapse = ""),
           HTML("<br>"),
           if (gd$x$which_split < length(split_nodes)){
@@ -152,8 +152,9 @@ split_part_guide <- function(node_data, prior_weight, guide_data){
 
         #removeModal(session)
         showModal(modalDialog(
-          visNetworkOutput("graph_guide", height = 250),
-          paste("Do you have an intuition on how the variance of ", get_node_name(nd$x, split_nodes[gd$x$which_split]), " is distributed?", sep = "", collapse = ""),
+          visNetwork::visNetworkOutput("graph_guide", height = 250),
+          paste("Do you have an intuition on how the variance of ", get_node_name(nd$x, split_nodes[gd$x$which_split]),
+                " is distributed, and do you want to use this knowledge?", sep = "", collapse = ""),
           HTML("<br>"),
           actionButton(paste0("use_pc_w", gd$x$counter_next), "Yes", class = "button_g"),
           actionButton(paste0("use_diri", gd$x$counter_next), "No", class = "button_g"),
@@ -186,7 +187,7 @@ chosen_dirichlet_guide <- function(node_data, prior_weight, guide_data){
 
     #removeModal(session)
     showModal(modalDialog(
-      visNetworkOutput("graph_guide", height = 250),
+      visNetwork::visNetworkOutput("graph_guide", height = 250),
       "Then this split gets a symmetric Dirichlet prior with equal amount of variance to each child node.",
       HTML("<br>"),
       if (gd$x$which_split < length(split_nodes)){
@@ -213,20 +214,20 @@ chosen_pc_guide <- function(node_data, prior_weight, guide_data){
 
   if (gd$x$next_modal == 2){
     pd$w[[gd$x$pr_ind]]$prior <- "pc"
-    pd$w[[gd$x$pr_ind]]$param <- data.frame(basemodel_node = pd$w[[gd$x$pr_ind]]$children[1], median = 0.25, basemodel = 0.25)
+    pd$w[[gd$x$pr_ind]]$param <- data.frame(above_node = pd$w[[gd$x$pr_ind]]$children[1], median = 0.25, basemodel = 0.25, concentration = 0.5)
     #removeModal(session)
     showModal(modalDialog(
-      visNetworkOutput("graph_guide", height = 250),
-      HTML(paste("Then we use a PC prior on this split. Do you have an idea on which of ",
+      visNetwork::visNetworkOutput("graph_guide", height = 250),
+      HTML(paste("Then we use a PC prior on this split. Which of the effects ",
             paste(get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children), sep = "", collapse = " and "),
             " should be preferred? (This means that we have shrinkage to this effect,",
-            " and is the same as choosing the value of the <b>basemodel</b> of the prior.)",
+            " and is the same as choosing the <b>basemodel</b> of the prior.)",
             sep = "", collapse = ""
       )),
       HTML("<br>"),
-      actionButton(paste0("yes_base1", gd$x$counter_next), paste("YES,", get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[1])), class = "button_g2"),
-      actionButton(paste0("yes_base2", gd$x$counter_next), paste("YES,", get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[2])), class = "button_g2"),
-      actionButton(paste0("no_base", gd$x$counter_next), "No", class = "button_g"),
+      actionButton(paste0("yes_base1", gd$x$counter_next), paste("EFFECT", get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[1])), class = "button_g2"),
+      actionButton(paste0("yes_base2", gd$x$counter_next), paste("EFFECT", get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[2])), class = "button_g2"),
+      actionButton(paste0("no_base", gd$x$counter_next), "A combination", class = "button_g"),
       title = "Step 2: Choose split prior",
       footer = actionButton("quit_guide", "Quit guide", class = "button_quit")
     ))
@@ -249,7 +250,7 @@ median_pc_guide <- function(node_data, prior_weight, guide_data, input, basemod_
 
     #removeModal(session)
     showModal(modalDialog(
-      visNetworkOutput("graph_guide", height = 250),
+      visNetwork::visNetworkOutput("graph_guide", height = 250),
       HTML(paste("How much of the variance of ",
                  pd$w[[gd$x$pr_ind]]$name,
                  " do you think should go to ",
@@ -261,13 +262,55 @@ median_pc_guide <- function(node_data, prior_weight, guide_data, input, basemod_
       numericInput("median_guide",
                    #"Median",
                    "",
-                   value = 0.25, min = 0, max = 1, step = 0.05, width = "200px"),
+                   value = 0.5, min = 0, max = 1, step = 0.05, width = "200px"),
       HTML("<br>"),
-      actionButton(paste0("set_median", gd$x$counter_next), "Ok", class = "button_g"),
+      if (basemod_value %in% c(0, 1)){
+        actionButton(paste0("set_median_01", gd$x$counter_next), "Ok", class = "button_g")
+      } else {
+        actionButton(paste0("set_median", gd$x$counter_next), "Ok", class = "button_g")
+      },
       title = "Step 2: Choose split prior",
       footer = actionButton("quit_guide", "Quit guide", class = "button_quit")
     ))
-    gd$x$next_modal <- 4
+    gd$x$next_modal <- if (basemod_value %in% c(0, 1)) 4 else 3.5
+  }
+
+  return(list(prior_weight = pd$w, guide_data = gd$x))
+
+}
+
+concentration_pc_guide <- function(node_data, prior_weight, guide_data, input){
+
+  nd <- list(x = node_data)
+  pd <- list(w = prior_weight)
+  gd <- list(x = guide_data)
+
+  if (gd$x$next_modal == 3.5){
+
+    if (!(pd$w[[gd$x$pr_ind]]$param$basemodel %in% c(0, 1))) {
+
+      pd$w[[gd$x$pr_ind]]$param$median <- input$median_guide
+
+      #removeModal(session)
+      showModal(modalDialog(
+        visNetwork::visNetworkOutput("graph_guide", height = 250),
+        HTML(paste("How concentrated do you want the prior for the amount of variance of ",
+                   pd$w[[gd$x$pr_ind]]$name, " to ",
+                   get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[1]),
+                   " to be?",
+                   sep = "", collapse = ""
+        )),
+        HTML("<br>"),
+        numericInput("conc_param_guide",
+                     "",
+                     value = 0.5, min = 0.5, max = 1, step = 0.05, width = "200px"),
+        HTML("<br>"),
+        actionButton(paste0("set_conc_param", gd$x$counter_next), "Ok", class = "button_g"),
+        title = "Step 2: Choose split prior",
+        footer = actionButton("quit_guide", "Quit guide", class = "button_quit")
+      ))
+      gd$x$next_modal <- 4
+    }
   }
 
   return(list(prior_weight = pd$w, guide_data = gd$x))
@@ -285,13 +328,15 @@ chosen_pc_finished <- function(node_data, prior_weight, guide_data, input){
   if (gd$x$next_modal == 4){
 
     pd$w[[gd$x$pr_ind]]$param$median <- input$median_guide
+    pd$w[[gd$x$pr_ind]]$param$concentration <- input$conc_param_guide
 
     if (pd$w[[gd$x$pr_ind]]$param$basemodel == 1){
 
       showModal(modalDialog(
-        visNetworkOutput("graph_guide", height = 250),
+        visNetwork::visNetworkOutput("graph_guide", height = 250),
         paste("Then this split gets a PC prior with shrinkage to ", get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[1]),
-              " and median ", pd$w[[gd$x$pr_ind]]$param$median, sep = "", collapse = ""),
+              " and median ", pd$w[[gd$x$pr_ind]]$param$median, ".",
+              sep = "", collapse = ""),
         HTML("<br>"),
         if (gd$x$which_split < length(split_nodes)){
           actionButton(paste0("next_split", gd$x$counter_next), "Ok, next split", class = "button_g")
@@ -306,16 +351,17 @@ chosen_pc_finished <- function(node_data, prior_weight, guide_data, input){
     } else if (pd$w[[gd$x$pr_ind]]$param$basemodel == 0){
 
       showModal(modalDialog(
-        visNetworkOutput("graph_guide", height = 250),
+        visNetwork::visNetworkOutput("graph_guide", height = 250),
         paste("Then this split gets a PC prior with shrinkage to ", get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[2]),
-              " and median ", pd$w[[gd$x$pr_ind]]$param$median, sep = "", collapse = ""),
+              " and median ", pd$w[[gd$x$pr_ind]]$param$median, ".",
+              sep = "", collapse = ""),
         HTML("<br>"),
         if (gd$x$which_split < length(split_nodes)){
           actionButton(paste0("next_split", gd$x$counter_next), "Ok, next split", class = "button_g")
         } else {
           actionButton("go_to_step_2_V", "Ok, I am ready for the total variances", class = "button_g")
         },
-        title = "Step 2: hoose split prior",
+        title = "Step 2: Choose split prior",
         footer = actionButton("quit_guide", "Quit guide", class = "button_quit")
       ))
 
@@ -325,9 +371,11 @@ chosen_pc_finished <- function(node_data, prior_weight, guide_data, input){
 
       #removeModal(session)
       showModal(modalDialog(
-        visNetworkOutput("graph_guide", height = 250),
+        visNetwork::visNetworkOutput("graph_guide", height = 250),
         paste("Then this split gets a PC prior with shrinkage to the median (which is set to ",
-              pd$w[[gd$x$pr_ind]]$param$median, ").", sep = "", collapse = ""),
+              pd$w[[gd$x$pr_ind]]$param$median, "), and concentration parameter ",
+              pd$w[[gd$x$pr_ind]]$param$concentration, ".",
+              sep = "", collapse = ""),
         h5(""),
         if (gd$x$which_split < length(split_nodes)){
           actionButton(paste0("next_split", gd$x$counter_next), "Ok, next split", class = "button_g")
@@ -348,21 +396,22 @@ chosen_pc_finished <- function(node_data, prior_weight, guide_data, input){
 
 
 
-totvar_part_guide <- function(node_data, prior_totvar, guide_data){
+totvar_part_guide <- function(node_data, prior_totvar, guide_data, .initial_args){
 
   nd <- list(x = node_data)
   pd <- list(V = prior_totvar)
   gd <- list(x = guide_data)
 
+  likl_name <- if (.initial_args$.family == "poisson") "Poisson" else .initial_args$.family
+
   if (gd$x$stepwise && length(pd$V) > 0 && gd$x$which_totvar > 0){
 
     top_nodes <- get_top_nodes(nd$x)
-
     gd$x$pr_ind <- get_prior_number(pd$V, top_nodes[gd$x$which_totvar])
 
     #removeModal(session)
     showModal(modalDialog(
-      visNetworkOutput("graph_guide", height = 250),
+      visNetwork::visNetworkOutput("graph_guide", height = 250),
       paste("Which prior do you want on ", pd$V[[gd$x$pr_ind]]$name, "? ",
             if (length(pd$V) > 1){
               "Note that you cannot choose Jeffreys' prior for any total variance, because you have more than one tree."
@@ -370,11 +419,14 @@ totvar_part_guide <- function(node_data, prior_totvar, guide_data){
             if (sum(nd$x$nodes$status == "detached") > 0){
               "Note that you cannot choose Jeffreys' prior for any total variance, because you have some model components that are not attached to the tree (they will get independent priors)."
             },
+            if (.initial_args$.family != "gaussian"){
+              paste0("Note that you cannot choose Jeffreys' prior because you have a ", likl_name, " likelihood.")
+            },
             sep = "", collapse = ""),
       HTML("<br>"),
       fluidRow(
         column(6,
-               if (length(pd$V) > 1 || sum(nd$x$nodes$status == "detached") > 0){
+               if (length(pd$V) > 1 || sum(nd$x$nodes$status == "detached") > 0 || .initial_args$.family != "gaussian"){
                  radioButtons("var_prior_guide",
                               "",
                               choices = list("PC prior" = "pc0",
@@ -430,7 +482,7 @@ cw_part_guide <- function(node_data, prior_cw, guide_data){
 
     #removeModal(session)
     showModal(modalDialog(
-      visNetworkOutput("graph_guide", height = 250),
+      visNetwork::visNetworkOutput("graph_guide", height = 250),
       paste("Which prior do you want on ", pd$var[[gd$x$pr_ind]]$name, "?", sep = "", collapse = ""),
       HTML("<br>"),
       fluidRow(
@@ -480,7 +532,9 @@ finishing_guide <- function(guide_data, session){
             "the panel to the left. When you are happy with the priors, you close the window and can start the inference."
       ),
       plotOutput("all_plots_guide"),
-      h5(""),
+      #p(""),
+      #uiOutput("prior_dists_guide"),
+      # p(""),
       actionButton("begin_guide", "Restart guide", class = "button_g"),
       title = "Finished!",
       footer = actionButton("quit_guide", "Quit guide and save prior", class = "button_quit")
@@ -517,7 +571,7 @@ make_par2_box_guide <- function(id, input){
     if (input$var_prior_guide == "pc0"){
       numericInput(id, h6("alpha"), 0.05, 0, 1, step = 0.01)
     } else if (input$var_prior_guide == "invgam"){
-      numericInput(id, h6("Rate"), 5e-5, 0, Inf, step = 0.01)
+      numericInput(id, h6("Scale"), 5e-5, 0, Inf, step = 0.01)
     } else if (input$var_prior_guide == "hc"){
       # nothing
     } else {
@@ -543,6 +597,7 @@ make_graph_guide <- function(node_data, prior_weight, prior_totvar, prior_cw, gu
   tmp_edges <- nd$x$edges
   tmp_edges$width <- if (nrow(tmp_edges) > 0) 2 else NULL
   tmp_edges$dashes <- if (nrow(tmp_edges) > 0) FALSE else NULL
+  tmp_edges$label <- NULL
   if (nrow(tmp_edges) > 0) tmp_edges <- cbind(tmp_edges, arrows = "to", hidden = FALSE)
 
   #tmp_nodes <- set_node_title(tmp_nodes, nd$x)
@@ -559,6 +614,8 @@ make_graph_guide <- function(node_data, prior_weight, prior_totvar, prior_cw, gu
 
       split_node <- pd$w[[gd$x$pr_ind]]$id
       children <- pd$w[[gd$x$pr_ind]]$children
+      # split_node <- pd$w[[gd$x$which_split]]$id
+      # children <- pd$w[[gd$x$which_split]]$children
 
       tmp_nodes$color.background[tmp_nodes$id == split_node] <- guide_highlight_parent_color
       tmp_nodes$color.background[tmp_nodes$id %in% children] <- guide_highlight_children_color
@@ -569,7 +626,8 @@ make_graph_guide <- function(node_data, prior_weight, prior_totvar, prior_cw, gu
 
     } else if (gd$x$which_totvar > 0){ # if we are going through the total variance(s)
 
-      totvar_node <- pd$V[[gd$x$pr_ind]]$id
+      # totvar_node <- pd$V[[gd$x$pr_ind]]$id
+      totvar_node <- pd$V[[gd$x$which_totvar]]$id
       tmp_nodes$color.background[tmp_nodes$id == totvar_node] <- guide_highlight_parent_color
 
       tmp_nodes$color.border[tmp_nodes$id == totvar_node] <- "black" #node_border_color
@@ -577,7 +635,9 @@ make_graph_guide <- function(node_data, prior_weight, prior_totvar, prior_cw, gu
 
     } else if (gd$x$which_cw > 0){ # if we are going through the CW priors
 
-      var_node <- pd$var[[gd$x$pr_ind]]$id
+      print(gd$x$which_cw)
+      # var_node <- pd$var[[gd$x$pr_ind]]$id
+      var_node <- pd$var[[gd$x$which_cw]]$id
       tmp_nodes$color.background[tmp_nodes$id == var_node] <- guide_highlight_parent_color
 
       tmp_nodes$color.border[tmp_nodes$id == var_node] <- "black" #node_border_color
@@ -587,15 +647,15 @@ make_graph_guide <- function(node_data, prior_weight, prior_totvar, prior_cw, gu
   }
 
   #nn <- plot_network()(tmp_nodes, tmp_edges, "small")
-  nn <- visNetwork(tmp_nodes, tmp_edges)
-  nn <- visHierarchicalLayout(nn)
-  nn <- visEdges(nn, color = list(color = node_border_color), arrowStrikethrough = F)
-  nn <- visNodes(nn,
+  nn <- visNetwork::visNetwork(tmp_nodes, tmp_edges)
+  nn <- visNetwork::visHierarchicalLayout(nn)
+  nn <- visNetwork::visEdges(nn, color = list(color = node_border_color), arrowStrikethrough = FALSE)
+  nn <- visNetwork::visNodes(nn,
                  color = list(border = node_border_color),
                  borderWidth = 1)
-  nn <- visNodes(nn, size = 30, font = list(size = 20, background = "#FFFFFF", color = node_border_color))
+  nn <- visNetwork::visNodes(nn, size = 30, font = list(size = 20, background = "#FFFFFF", color = node_border_color))
   #nn <- visHierarchicalLayout(nn, nodeSpacing = 50, levelSeparation = 50, treeSpacing = 50)
-  nn <- visInteraction(nn,
+  nn <- visNetwork::visInteraction(nn,
                        dragNodes = FALSE,
                        dragView = FALSE,
                        zoomView = FALSE,

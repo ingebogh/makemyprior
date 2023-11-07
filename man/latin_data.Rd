@@ -24,17 +24,32 @@ Simulated dataset for latin square experiment with 81 observations.
 \dontrun{
 
 vignette("latin_square", package = "makemyprior")
+}
 
-formula <- y ~ lin + mc(row) + mc(col) + mc(iid) +
-mc(rw2, model = "rw2", constr = TRUE, lin_constr = TRUE)
+if (interactive() && requireNamespace("rstan")){
 
-prior <- make_prior(
-  formula, latin_data,
-  prior = list(tree = "s1 = (rw2, iid);
-                               s2 = (row, col, s1); s3 = (s2, eps)",
-               w = list(s1 = list(prior = "pc0", param = 0.25),
-                        s2 = list(prior = "dirichlet"),
-                        s3 = list(prior = "pc0", param = 0.25))))
+  formula <- y ~ lin + mc(row) + mc(col) + mc(iid) +
+    mc(rw2, model = "rw2", constr = TRUE, lin_constr = TRUE)
+
+  prior <- make_prior(
+    formula, latin_data,
+    prior = list(tree = "s1 = (rw2, iid);
+                                 s2 = (row, col, s1); s3 = (s2, eps)",
+                 w = list(s1 = list(prior = "pc0", param = 0.25),
+                          s2 = list(prior = "dirichlet"),
+                          s3 = list(prior = "pc0", param = 0.25))))
+
+  posterior <- inference_stan(prior, iter = 150, warmup = 50,
+                              seed = 1, init = "0", chains = 1)
+  # Note: For reliable results, increase the number of iterations
+
+  plot(prior)
+  plot_tree_structure(prior)
+  plot_posterior_fixed(posterior)
+  plot_posterior_stan(posterior, param = "prior", prior = TRUE)
+}
+
+\dontrun{
 
 posterior <- inference_stan(prior, iter = 15000, warmup = 5000,
                             seed = 1, init = "0", chains = 1)
@@ -44,5 +59,6 @@ plot_tree_structure(prior)
 plot_posterior_fixed(posterior)
 plot_posterior_stan(posterior, param = "prior", prior = TRUE)
 }
+
 }
 \keyword{datasets}

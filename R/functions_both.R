@@ -6,7 +6,7 @@
 # for more than 20 nodes this does not work yet, but that is too many parameters anyways
 get_diri_param <- function(no_param){
 
-  if (no_param == 1 | no_param > 20) stop("Too many or too few children")
+  if (no_param == 1 | no_param > 20) stop("Too many or few children for the Dirichlet prior.", call. = FALSE)
 
   values <- c(1, 0.7535, 0.6834, 0.6485, 0.6274,
               0.6132, 0.6029, 0.5951, 0.589, 0.5842,
@@ -85,7 +85,6 @@ get_node_name <- function(node_data, node_id) node_data$nodes$label[node_data$no
 # get the id of a node with a given name
 get_node_id <- function(node_data, node_name) node_data$nodes$id[node_data$nodes$label %in% node_name]
 
-# TODO: for now this only works for a tree with only one top node (I think)
 get_original_nodes <- function(node_data){
 
   # which nodes are the top node (may be only 1)
@@ -96,6 +95,8 @@ get_original_nodes <- function(node_data){
 
   #return(node_data$nodes[node_data$nodes$id %in% c(top_node_id, not_in_from),])
   return(node_data$nodes[node_data$nodes$id %in% not_in_from,])
+
+  # return(node_data$orig_nodedata)
 
 }
 
@@ -110,7 +111,8 @@ get_parent_node_id <- function(node_data, node_id){
 get_split_ids <- function(node_data) return(unique(node_data$edges$from))
 
 # which index in the prior_data-list corresponds to a given node id
-get_split_number <- function(prior_data, node_id) {print("use get_prior_number instead!"); which(sapply(prior_data, function(x) x$id) == node_id)}
+# get_split_number <- function(prior_data, node_id) {print("use get_prior_number instead!"); which(sapply(prior_data, function(x) x$id) == node_id)}
+get_split_number <- function(prior_data, node_id) which(sapply(prior_data, function(x) x$id) == node_id)
 
 # which index in the prior_data-list corresponds to a given node id (split, top node or CW)
 get_prior_number <- function(prior_data, node_id) which(sapply(prior_data, function(x) x$id) == node_id)
@@ -133,5 +135,7 @@ nodes_in_tree <- function(node_data, node_id){
 
 }
 
+# which nodes are the first generation children of this node
+first_gen_children <- function(node_data, node_id) node_data$edges$to[node_data$edges$from == node_id]
 
 

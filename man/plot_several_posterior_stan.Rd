@@ -32,11 +32,14 @@ but the variance proportions will be correct.
 See also \link[makemyprior]{makemyprior_plotting}.
 }
 \examples{
-\dontrun{
 
-ex_prior <- makemyprior_example_model()
-res_stan <- inference_stan(ex_prior)
-extract_posterior_variance(res_stan, "a")
+if (interactive() && requireNamespace("rstan")){
+  ex_prior1 <- makemyprior_example_model(seed = 1)
+  ex_prior2 <- makemyprior_example_model(seed = 2)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  res_stan1 <- inference_stan(ex_prior1, iter = 100)
+  res_stan2 <- inference_stan(ex_prior2, iter = 100)
+  plot_several_posterior_stan(list(One = res_stan1, Two = res_stan2))
 }
 
 }

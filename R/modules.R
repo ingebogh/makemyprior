@@ -109,8 +109,9 @@ clicked_node_action <- function(node_data, prior_weight, prior_totvar, prior_cw,
     disable("weight_prior")
     hideElement("basemodel")
     hideElement("median")
+    hideElement("conc_param")
   }
-  if (!is_dual_split_node(node_data, input)) disable(selector = "[type=radio][value=pc_w]") # only have the option to use pc prior on dual split
+  if (!is_dual_split_node(node_data, input)) disable(selector = "[type=radio][value=pc]") # only have the option to use pc prior on dual split
 
   # remove or include components in the tree, so the user can give CW priors to some components
   if (is_leaf_node(node_data, input) && are_attached(node_data, input)){ # can only detach one node at a time
@@ -140,7 +141,7 @@ clicked_node_action <- function(node_data, prior_weight, prior_totvar, prior_cw,
   }
 
   # only allow jeffreys when we have only one tree, and no cw priors, else the user must use a proper prior
-  if (sum(node_data$nodes$status == "detached") > 0 || sum(node_data$nodes$top_node) > 1) {
+  if (sum(node_data$nodes$status == "detached") > 0 || sum(node_data$nodes$top_node) != 1) {
     disable(selector = "[type=radio][value=jeffreys]")
   }
 
@@ -151,6 +152,7 @@ clicked_node_action <- function(node_data, prior_weight, prior_totvar, prior_cw,
     children <- get_children(node_data, input)
     if (prior_info$prior == "pc"){
       showElement("median")
+      if (input$basemodel == "comb") showElement("conc_param")
       showElement("basemodel")
       updateRadioButtons(session, "basemodel",
                          # choiceNames = c(get_node_name(node_data, children[1]), get_node_name(node_data, children[2]),
@@ -164,6 +166,7 @@ clicked_node_action <- function(node_data, prior_weight, prior_totvar, prior_cw,
                          selected = if (prior_info$param$basemodel == 1) "mod1" else if (prior_info$param$basemodel == 0) "mod2" else "comb"
       )
       updateNumericInput(session, "median", value = prior_info$param$median)
+      updateNumericInput(session, "conc_param", value = prior_info$param$concentration)
     }
   }
 
@@ -217,7 +220,7 @@ get_par2_max <- function(prior_name) if (prior_name == "pc0") 1 else Inf
 get_par2_step <- function(prior_name) if (prior_name == "pc0") 0.05 else 0.01
 
 get_par1_label <- function(prior_name) if (prior_name == "pc0") "U" else if (prior_name == "invgam") "Shape" else if (prior_name == "hc") "Scale"
-get_par2_label <- function(prior_name) if (prior_name == "pc0") "alpha" else if (prior_name == "invgam") "Rate"
+get_par2_label <- function(prior_name) if (prior_name == "pc0") "alpha" else if (prior_name == "invgam") "Scale"
 
 get_par1_default_val <- function(prior_name) if (prior_name == "pc0") 3 else if (prior_name == "invgam") 1 else if (prior_name == "hc") 25
 get_par2_default_val <- function(prior_name) if (prior_name == "pc0") 0.05 else if (prior_name == "invgam") 5e-5
@@ -235,6 +238,8 @@ disable_everything <- function(){
   hideElement("par2")
   hideElement("basemodel")
   hideElement("median")
+  hideElement("conc_param")
+  hideElement("intrinsic")
 
 }
 
@@ -256,27 +261,27 @@ make_graph <- function(node_data){
 
   tmp_edges <- set_detached_edges(tmp_nodes, tmp_edges)
 
-  nn <- visNetwork(tmp_nodes, tmp_edges)
-  nn <- visHierarchicalLayout(nn)
-  nn <- visEdges(nn, color = list(highlight = node_highlight_border_color),
-                 arrowStrikethrough = F, selectionWidth = 1, smooth = FALSE,
+  nn <- visNetwork::visNetwork(tmp_nodes, tmp_edges)
+  nn <- visNetwork::visHierarchicalLayout(nn)
+  nn <- visNetwork::visEdges(nn, color = list(highlight = node_highlight_border_color),
+                 arrowStrikethrough = FALSE, selectionWidth = 1, smooth = FALSE,
                  font = list(color = node_border_color, size = 14, vadjust = 35,
                              # background = "#EAE7DC", # background does not move with vadjust
                              strokeWidth = 0, bold = TRUE)
                  )
-  nn <- visNodes(nn,
+  nn <- visNetwork::visNodes(nn,
                  color = list(border = node_border_color,
                               highlight = list(border = node_highlight_border_color)),
                  borderWidth = 1,
                  #borderWidthSelected = 1,
                  font = list(background = "#EAE7DC", color = node_border_color))
-  nn <- visOptions(nn, highlightNearest = FALSE)
-  nn <- visInteraction(nn,
+  nn <- visNetwork::visOptions(nn, highlightNearest = FALSE)
+  nn <- visNetwork::visInteraction(nn,
                        dragNodes = FALSE,
                        dragView = FALSE,
                        zoomView = FALSE,
                        multiselect = TRUE)
-  nn <- visEvents(nn, select = "function(nodes) {
+  nn <- visNetwork::visEvents(nn, select = "function(nodes) {
                     Shiny.onInputChange('current_node_id', nodes.nodes);
                     ;}")
 
@@ -284,170 +289,4 @@ make_graph <- function(node_data){
 
 }
 
-
-if (FALSE){
-
-
-initialize_graph <- function(init_nodes){
-
-  nodes <- init_nodes$nodes
-  edges <- init_nodes$edges
-
-  nodes$color.background <- node_palette(calc_variance_proportions(list(nodes = nodes, edges = edges))$nodes$varprop)
-  nodes$color.background[nodes$status == "detached"] <- detached_node_color
-  nodes$color.highlight.background <- nodes$color.background
-  edges$width <- edges$width*5 # to get a bit thicker edges in the graph
-  if (nrow(edges) > 0) edges <- cbind(edges, arrows = "to", hidden = FALSE)
-  edges <- set_detached_edges(nodes, edges)
-
-  nn <- visNetwork(nodes, edges)
-  nn <- visHierarchicalLayout(nn)
-  nn <- visEdges(nn, color = list(highlight = "black"), arrowStrikethrough = F, selectionWidth = 1)
-  nn <- visNodes(nn,
-                 color = list(border = node_border_color,
-                              highlight = list(border = node_highlight_border_color)),
-                 borderWidth = 1, borderWidthSelected = 0,
-                 font = list(background = "#EAE7DC", color = node_border_color),
-                 labelHighlightBold = TRUE)
-  nn <- visInteraction(nn,
-                       dragNodes = FALSE,
-                       dragView = FALSE,
-                       zoomView = FALSE,
-                       multiselect = TRUE)
-  nn <- visEvents(nn, select = "function(nodes) {
-                    Shiny.onInputChange('current_node_id', nodes.nodes);
-                    ;}")
-
-  nn <- visIgraphLayout(nn)
-
-  return(nn)
-
-}
-
-# make graph using visNetworkProxy
-# updates when nd$x$nodes are changing
-make_graph_proxy <- function(node_data, nn){
-
-  nd <- list(x = node_data)
-
-  tmp_nodes <- nd$x$nodes
-  tmp_nodes$color.background <- node_palette(calc_variance_proportions(nd$x)$nodes$varprop)
-  tmp_nodes$color.background[tmp_nodes$status == "detached"] <- detached_node_color
-  #tmp_nodes$color.border <- node_border_color
-  tmp_nodes$color.highlight.background <- tmp_nodes$color.background
-  #tmp_nodes <- set_node_title(tmp_nodes, nd$x)
-
-  tmp_edges <- nd$x$edges
-  tmp_edges$width <- tmp_edges$width*5 # to get a bit thicker edges in the graph
-  if (nrow(tmp_edges) > 0) tmp_edges <- cbind(tmp_edges, arrows = "to", hidden = FALSE)
-
-  # if (is_dual_split_node(node_data, input) && input$weight_prior == "pc"){
-  #   children <- get_prior_info(prior_data, node_data, input)$children
-  #   tmp_nodes$label[tmp_nodes$id == children[1]] <- paste0("A: ", tmp_nodes$label[tmp_nodes$id == children[1]])
-  #   tmp_nodes$label[tmp_nodes$id == children[2]] <- paste0("B: ", tmp_nodes$label[tmp_nodes$id == children[2]])
-  # }
-
-  tmp_edges <- set_detached_edges(tmp_nodes, tmp_edges)
-
-  nn <- visNetwork(tmp_nodes, tmp_edges)
-  nn <- visHierarchicalLayout(nn)
-  nn <- visEdges(nn, color = list(highlight = "black"), arrowStrikethrough = F, selectionWidth = 1)
-  nn <- visNodes(nn,
-                 color = list(border = node_border_color,
-                              highlight = list(border = node_highlight_border_color)),
-                 borderWidth = 1, borderWidthSelected = 0,
-                 font = list(background = "#EAE7DC", color = node_border_color),
-                 labelHighlightBold = TRUE)
-  # nn <- visOptions(nn, highlightNearest = list(enabled = FALSE, algorithm = "hierarchical",
-  #                                              degree = list(from = 0, to = 0),
-  #                                              labelOnly = FALSE))
-  nn <- visInteraction(nn,
-                       dragNodes = FALSE,
-                       dragView = FALSE,
-                       zoomView = FALSE,
-                       multiselect = TRUE)
-  nn <- visEvents(nn, select = "function(nodes) {
-                    Shiny.onInputChange('current_node_id', nodes.nodes);
-                    ;}")
-  return(nn)
-
-}
-
-# initial network (does not change)
-output$graph <- renderVisNetwork({
-  initialize_graph(initialize_nodes(.initial_args))
-})
-
-# update tree structure when the node-object is changed
-observeEvent(nd$x$nodes, {
-
-  arrows_tmp <- if (nrow(nd$x$edges) > 0) "to" else NULL
-
-  nn <- visNetworkProxy("graph")
-  # when the nodes are changed, we must also update the edges
-  #nn <- visUpdateNodes(nn, nodes = nd$x$nodes)
-  nn <-visNodes(nn, id = nd$x$nodes$id, label = nd$x$nodes$label, level = nd$x$nodes$level)
-  #nn <- visUpdateEdges(nn, edges = cbind(nd$x$edges, arrows = arrows_tmp))
-  nn <- visEdges(nn, arrows = list(from = nd$x$edges$from, to = nd$x$edges$to), width = nd$x$edges$width, dashes = nd$x$edg)
-  nn
-
-})
-
-observeEvent(nd$x$edges, {
-
-  arrows_tmp <- if (nrow(nd$x$edges) > 0) "to" else NULL
-
-  nn <- visNetworkProxy("graph")
-  # when the edges are changed, we do not need to change the nodes
-  nn <- visUpdateEdges(nn, edges = cbind(nd$x$edges, arrows = arrows_tmp))
-  nn
-
-})
-
-observeEvent(pd$w, {
-
-  print("hei")
-  new_colors <- node_palette(calc_variance_proportions(nd$x)$nodes$varprop)
-  new_colors[nd$x$nodes$status == "detached"] <- detached_node_color
-  nn <- visNetworkProxy("graph")
-  nn <- visNodes(nn, color = list(background = new_colors))
-  nn
-
-})
-
-
-output$graph <- renderVisNetwork({
-  # make_graph(nd$x)
-  make_graph(nd_graph$x, .initial_args$.initial_nodes$label)
-})
-
-observe({
-  if (is_dual_split_node(nd$x, input) && get_prior_info(pd$w, nd$x, input)$prior == "pc" && sum(grepl(" ", nd_graph$x$nodes$label)) == 0){
-    print("yes")
-    children <- get_prior_info(pd$w, nd$x, input)$children
-    nd_graph$x <- add_remove_AB(nd$x, TRUE, children)
-    visNodes(visNetworkProxy("graph"), label = nd_graph$x$nodes$label)
-  }
-  else if ((!is_dual_split_node(nd$x, input) || get_prior_info(pd$w, nd$x, input)$prior != "pc") && sum(grepl(" ", nd_graph$x$nodes$label)) > 0){
-    print("no")
-    nd_graph$x <- add_remove_AB(nd$x, FALSE)
-    visNodes(visNetworkProxy("graph"), label = nd_graph$x$nodes$label)
-  } else {
-    #browser()
-    visNodes(visNetworkProxy("graph"), label = nd$x$nodes$label)
-  }
-})
-
-# object that is used for the graph, without the labels to avoid rendering all the time
-nd_graph <- reactiveValues(x = NULL)
-observe({
-  nd_graph$x <- list(
-    nodes = nd$x$nodes[-2],
-    edges = nd$x$edges
-  )
-  #if (is.null(nd_graph$x$nodes$label)) nd_graph$x$nodes$label <- nd$x$nodes$label
-})
-
-
-}
 

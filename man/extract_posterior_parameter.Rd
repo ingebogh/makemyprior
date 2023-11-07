@@ -10,7 +10,7 @@ extract_posterior_parameter(obj, param)
 \item{obj}{An object from \code{inference_stan}.}
 
 \item{param}{Name of the variance parameter, which is the same as the name of the corresponding
-fixed or random effect in the data. Intercept is denoted 'intercept'.}
+fixed or random effect in the data. Intercept is denoted 'intercept', and residual variance is denoted 'eps'.}
 }
 \value{
 Returns a vector with the posterior samples of the chosen parameter, on variance scale for
@@ -21,12 +21,13 @@ Extract the posterior parameter estimate of a random effect variance or fixed ef
 when inference is done with Stan
 }
 \examples{
-\dontrun{
 
-ex_prior <- makemyprior_example_model()
-res_stan <- inference_stan(ex_prior)
-extract_posterior_parameter(res_stan, "intercept")
-extract_posterior_parameter(res_stan, "a")
+if (interactive() && requireNamespace("rstan")){
+  ex_prior <- makemyprior_example_model()
+  res_stan <- inference_stan(ex_prior, iter = 100)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  extract_posterior_parameter(res_stan, "intercept")
+  extract_posterior_parameter(res_stan, "a")
 }
 
 }

@@ -32,5 +32,6 @@ effects and parameters:
   \item{\link[makemyprior]{extract_posterior_parameter}}
 }
 
-\link[makemyprior]{eval_pc_prior} can be used to evaluate a PC prior for a weight parameter.
+\link[makemyprior]{eval_pc_prior} can be used to evaluate a PC prior for a weight parameter,
+and \link[makemyprior]{eval_joint_prior} to evaluate the whole joint prior.
 }

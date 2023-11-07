@@ -17,12 +17,12 @@ See also \link[makemyprior]{makemyprior_plotting}.
 Function for plotting the posterior distributions of the coefficients of the fixed effects
 }
 \examples{
-\dontrun{
 
-ex_prior <- makemyprior_example_model()
-res_stan <- inference_stan(ex_prior)
-plot_posterior_fixed(res_stan)
-
+if (interactive() && requireNamespace("rstan")){
+  ex_prior <- makemyprior_example_model()
+  res_stan <- inference_stan(ex_prior, iter = 100)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  plot_posterior_fixed(res_stan)
 }
 
 }

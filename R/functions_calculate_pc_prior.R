@@ -16,23 +16,26 @@ reduce_matrices <- function(mats){
   mat1 <- mats[[1]]
   mat2 <- mats[[2]]
 
-  if (nrow(mat1) != nrow(mat2) || ncol(mat1) != ncol(mat2)) stop("Matrices of different sizes!")
-  if (!isSymmetric(mat1) || !isSymmetric(mat2)) stop("Matrices not symmetric!")
+  if (nrow(mat1) != nrow(mat2) || ncol(mat1) != ncol(mat2)) stop("Matrices of different sizes!", call. = FALSE)
+  if (!isSymmetric(mat1, tol = 1e-8) || !isSymmetric(mat2, tol = 1e-8)) stop("Matrices not symmetric!", call. = FALSE)
 
   n <- nrow(mat1)
 
-  qr1 <- base::qr(mat1)
-  qr2 <- base::qr(mat2)
+  qr1_rank <- compute_rank(mat1)
+  qr2_rank <- compute_rank(mat2)
+  # qr1 <- base::qr(mat1)
+  # qr2 <- base::qr(mat2)
 
   # then they have full rank and do not need transformation
   # TODO: can test this outside the function
-  if (qr1$rank == n && qr2$rank == n) return(mats)
+  if (qr1_rank == n && qr2_rank == n) return(mats)
+  # if (qr1$rank == n && qr2$rank == n) return(mats)
 
   ## reduce the matrices so they are non-singular using eigenvalue decomposition
 
   # if the matrices are equal, we must do something clever
   if (sum(mat1 != mat2) == 0){
-    warning("What do we do when the two matrices of a split are equal?")
+    stop("The covariance matrices for this split are equal, this is wrong. Reformulate you model.", call. = FALSE)
   }
 
   mat <- mat1 + mat2
@@ -45,9 +48,37 @@ reduce_matrices <- function(mats){
   mat1_red <- A %*% mat1 %*% t(A)
   mat2_red <- A %*% mat2 %*% t(A)
 
+  rank1_red <- compute_rank(mat1_red)
+  rank2_red <- compute_rank(mat2_red)
+  # rank1_red <- base::qr(mat1_red)$rank
+  # rank2_red <- base::qr(mat2_red)$rank
+
+  # if (rank1_red != qr1_rank){
+  #   mat1_red <- transf_matrix(mat1_red)
+  #   browser()
+  # }
+  # if (rank2_red != qr2_rank){
+  #   mat2_red <- transf_matrix(mat2_red)
+  #   browser()
+  # }
+
   return(list(as.matrix(mat1_red), as.matrix(mat2_red)))
 
 }
+
+# not sure what this is doing
+transf_matrix <- function(X){
+
+  n <- nrow(X)
+  I <- diag(n)
+  J <- matrix(1, n, n)
+
+  return(
+    (I-J/n) %*% X %*% t(I-J/n)
+  )
+
+}
+
 
 # the index in the matrix_data-list of a given node with id node_id
 get_matrix_data_index <- function(matrix_data, node_id) return(which(sapply(matrix_data, function(x) x$id) == node_id))
@@ -68,11 +99,12 @@ get_basemodel_value <- function(prior_info){
   if (prior_info$prior == "dirichlet"){
     basemodel <- rep(1/prior_info$no_children, prior_info$no_children)
   } else { # pc prior
-    # the order of the basemodel vector must be correct
-    basemodel1 <- prior_info$param$basemodel
-    basemodel_comp <- prior_info$param$basemodel_node
-    # gives an error if basemodel is not the first node, since the variable "basemodel" does not esist
-    basemodel <- if (prior_info$children[1] == basemodel_comp) c(basemodel1, 1-basemodel1) else c(1-basemodel1, basemodel)
+    # # the order of the basemodel vector must be correct
+    # basemodel1 <- prior_info$param$basemodel
+    # basemodel_comp <- prior_info$param$basemodel_node
+    # # gives an error if basemodel is not the first node, since the variable "basemodel" does not esist
+    # basemodel <- if (prior_info$children[1] == basemodel_comp) c(basemodel1, 1-basemodel1) else c(1-basemodel1, basemodel)
+    basemodel <- c(prior_info$param$basemodel, 1-prior_info$param$basemodel)
   }
 
   return(basemodel)
@@ -80,15 +112,14 @@ get_basemodel_value <- function(prior_info){
 }
 
 # calculate the pc prior for the whole tree
-# TODO: make a separate functions that updates the pc prior when the tree changes 
-# matrix_data is data-input and is not changed during the program
-calculate_pc_prior <- function(node_data, prior_data, matrix_data){
+# matrix_data is data-input and is not changed anywhere
+calculate_pc_prior <- function(node_data, prior_data, matrix_data, gui = FALSE){
 
-  # if we have no splits, we do not have any splits either
+  # if we have no edges, we do not have any splits either
   if (nrow(node_data$edges) == 0) return(list())
 
-  # get the matrices for all leaf nodes and splits in one list
-  # TODO: make an object with the matrices so we do not need to calculate them every time
+  # # get the matrices for all leaf nodes and splits in one list
+  # # TODO: make an object with the matrices so we do not need to calculate them every time
   split_matrix_data <- calc_all_covariance_matrices(node_data, prior_data, matrix_data)
 
   logit_ws <- c(-500,
@@ -105,9 +136,13 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
 
   prior_list <- list() # list for storing prior information
 
+  # is_intrinsic_vec <- c()
+
   for (ind in 1:length(split_nodes)){
 
     node_id <- split_nodes[ind]
+    split_name <- get_node_name(node_data, node_id)
+    base_name <- get_node_name(node_data, prior_data[[get_prior_number(prior_data, node_id)]]$children[1])
 
     prior_info_tmp <- prior_data[[get_prior_number(prior_data, node_id)]]
 
@@ -126,36 +161,43 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
 
     } else { # pc prior
 
+      # only used when basemodel is not 0 or 1
+      conc_param <- prior_info_tmp$param$concentration
+
       children <- prior_info_tmp$children
-      base_id <- prior_info_tmp$param$basemodel_node
-      alt_id <- children[children != base_id]
-      # find which of the child-nodes that are registered as the basemodel-node
-      if (children[1] != base_id) children <- children[c(2,1)]
+      above_id <- prior_info_tmp$param$above
+      not_above_id <- children[children != above_id]
 
       # base_mat is the matrix the matrix corresponding to the node that is registered as the basemodel_node in prior_data
       # alt_mat is the other matrix
-      base_mat <- as.matrix(split_matrix_data[[get_matrix_data_index(split_matrix_data, base_id)]]$mat)
-      alt_mat <- as.matrix(split_matrix_data[[get_matrix_data_index(split_matrix_data, alt_id)]]$mat)
+      base_mat <- as.matrix(split_matrix_data[[get_matrix_data_index(split_matrix_data, above_id)]]$mat)
+      alt_mat <- as.matrix(split_matrix_data[[get_matrix_data_index(split_matrix_data, not_above_id)]]$mat)
 
-      stopifnot(sum(dim(base_mat) == dim(alt_mat)) == 2) # if they have different dimensions, something is wrong
+      stopifnot(all(dim(base_mat) == dim(alt_mat))) # if they have different dimensions, something is wrong
 
       n <- nrow(base_mat)
       median_to_base <- prior_info_tmp$param$median
       amount_to_base <- prior_info_tmp$param$basemodel # amount of variance that goes to the basemodel node (0, 1 or median)
 
-      qr_base <- base::qr(base_mat)
-      qr_alt <- base::qr(alt_mat)
+      qr_base <- list(rank = compute_rank(base_mat))
+      qr_alt <- list(rank = compute_rank(alt_mat))
+      # qr_base <- base::qr(base_mat)
+      # qr_alt <- base::qr(alt_mat)
 
-      ### tree cases (remember what the definitions of base_mat and alt_mat are!!!)
-        # base_mat = matrix of basemod_node, alt_mat = the other matrix. Independent of what basemodel is!!
+      ### three cases, definition of base_mat and alt_mat:
+      ### base_mat = matrix of node above in the weight, which is not present in basemodel with PC0
+      ### alt_mat = matrix of node that is not above in the weight, which is not present in basemodel with PC1
+        # base_mat = matrix of above_node, alt_mat = the other matrix. Independent of what basemodel is!!
+      ### both_mat = base_mal*w0 + alt_mat*(1-w0)
       # 1: both base_mat and alt_mat non-singular -> ok
       # 2: one of base_mat and alt_mat are singular
         # a: non-singular matrix is basemodel -> ok
         # b: singular matrix is basemodel -> intrinsic
         # c: basemodel is a combination -> ok
       # 3: both base_mat and alt_mat are singular
-        # a: basemodel has lower rank than both_mat -> intrinsic
-        # b:basemodel has the same rank as both_mat OR basemodel is a combination, -> reduce -> ok (we get situation 1)
+        # a: basemodel has lower rank than alternative model -> intrinsic
+        # b: basemodel has the same rank as both_mat (i.e. same or higher rank than alternative model) OR
+            # basemodel is a combination, -> reduce -> ok (we get situation 1)
       if (qr_base$rank == n && qr_alt$rank == n){ # 1 (both are non-singular)
 
         spline_coeffs <- calc_prior_spline(
@@ -164,7 +206,11 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
           basemodel = amount_to_base,
           median_to_base = median_to_base,
           base_mat = base_mat,
-          alt_mat = alt_mat
+          alt_mat = alt_mat,
+          conc_param = conc_param,
+          splitname = split_name,
+          basename = base_name,
+          gui = gui
         )
 
       } else if (min(qr_base$rank, qr_alt$rank) < n && max(qr_base$rank, qr_alt$rank) == n){ # 2 (one is singular, one is non-singular)
@@ -177,28 +223,32 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
           is_intrinsic <- FALSE
         } else if (amount_to_base == 0 && qr_alt$rank == n){ # alt_mat is basemodel and non-singular
           is_intrinsic <- FALSE
-        } else if (!(amount_to_base %in% c(0,1))){ # basemodel is a combination
+        } else if (!(amount_to_base %in% c(0,1))){ # basemodel is a combination of one singular and one non-singular
           is_intrinsic <- FALSE
         } else {
-          stop("This should not be possible, woops")
+          stop("Something went wrong in the computation of the PC prior. Change prior or reformulate your model.", call. = FALSE)
         }
 
         spline_coeffs <- calc_prior_spline(
           logit_ws = logit_ws,
-          intrinsic = is_intrinsic, # not intrinsic
+          intrinsic = is_intrinsic,
           basemodel = amount_to_base,
           median_to_base = median_to_base,
           base_mat = base_mat,
-          alt_mat = alt_mat
+          alt_mat = alt_mat,
+          conc_param = conc_param,
+          splitname = split_name,
+          basename = base_name,
+          gui = gui
         )
 
       } else if (max(qr_base$rank, qr_alt$rank) < n) { # 3 (both are singular)
 
         both_mat <- base_mat + alt_mat
-        qr_both <- base::qr(both_mat)
+        qr_both <- list(rank = compute_rank(both_mat)) #base::qr(both_mat)
 
         # the rank of base_mat, alt_mat and both_mat will not change with the reduction,
-        # so we can avoid some matrix-operations by checking their ranks first
+        # so checking their ranks first to avoids some matrix-operations
 
         if (amount_to_base == 1 && qr_base$rank < qr_both$rank){ # base_mat is basemodel and has less rank than both_mat
           spline_coeffs <- calc_prior_spline(
@@ -207,7 +257,11 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
             basemodel = amount_to_base,
             median_to_base = median_to_base,
             base_mat = base_mat,
-            alt_mat = alt_mat
+            alt_mat = alt_mat,
+            conc_param = conc_param,
+            splitname = split_name,
+            basename = base_name,
+            gui = gui
           )
         } else if (amount_to_base == 0 && qr_alt$rank < qr_both$rank){ # alt_mat is basemodel and has less rank than both_mat
           spline_coeffs <- calc_prior_spline(
@@ -216,14 +270,20 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
             basemodel = amount_to_base,
             median_to_base = median_to_base,
             base_mat = base_mat,
-            alt_mat = alt_mat
+            alt_mat = alt_mat,
+            conc_param = conc_param,
+            splitname = split_name,
+            basename = base_name,
+            gui = gui
           )
-        } else { # must reduce the matrices
+        } else { # must reduce the dimension of the matrices
 
-          # reducing the matrices
           mat_red <- reduce_matrices(list(base_mat, alt_mat))
           base_mat_red <- mat_red[[1]]
           alt_mat_red <- mat_red[[2]]
+
+          base_mat_red <- base_mat_red #/typical_variance(base_mat_red)
+          alt_mat_red <- alt_mat_red #/typical_variance(alt_mat_red)
 
           spline_coeffs <- calc_prior_spline(
             logit_ws = logit_ws,
@@ -231,12 +291,22 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
             basemodel = amount_to_base,
             median_to_base = median_to_base,
             base_mat = base_mat_red,
-            alt_mat = alt_mat_red
+            alt_mat = alt_mat_red,
+            conc_param = conc_param,
+            splitname = split_name,
+            basename = base_name,
+            gui = gui
           )
         }
       } else {
-        stop("This should not be possible, woops")
+        stop("Something went wrong in the computation of the PC prior. Change prior or reformulate your model.", call. = FALSE)
       }
+
+      # if we are in the gui, we need to know if the base-model is intrinsic or not to print a message to the user
+      # if (!gui) {
+      #   is_intrinsic_vec <- c(is_intrinsic_vec, spline_coeffs$intrinsic)
+      # }
+      # spline_coeffs <- spline_coeffs$spline_coeffs
 
       prior <- list(
         node_id = node_id,
@@ -251,45 +321,71 @@ calculate_pc_prior <- function(node_data, prior_data, matrix_data){
 
   }
 
+  # if (gui) return(list(prior_list = prior_list, is_intrinsic = is_intrinsic_vec)) else return(prior_list)
+
   return(prior_list)
 
 }
 
 # calculates the spline coefficients object for a given prior
-calc_prior_spline <- function(logit_ws, intrinsic, basemodel, median_to_base, base_mat, alt_mat){
+calc_prior_spline <- function(logit_ws, intrinsic, basemodel, median_to_base, base_mat, alt_mat, conc_param, splitname, basename, gui = FALSE){
 
   if (!intrinsic){
     y_vals <- pc_dual_logit_stable(
       logitW = logit_ws,
-      w0 = 1-basemodel, # TODO we define basemodel matrices the other way around now, must change when we rewrite the KLD function
+      w0 = basemodel,
       shape = 1,
       median = median_to_base,
       wLeft = 0.5,
-      SigA = alt_mat,
-      SigB = base_mat
+      SigA = base_mat,
+      SigB = alt_mat,
+      conc_param = conc_param,
+      splitname = splitname
+      # SigA = alt_mat,
+      # SigB = base_mat
     )
   } else {
+
+    if (!gui){
+      check <- NULL
+      if (basemodel == 0 && median_to_base > 0.25){
+        check <- paste0("larger than 0.25 for the '", splitname, "' split\n")
+      } else if (basemodel == 1 && median_to_base < 0.75){
+        check <- paste0("smaller than 0.75 for the '", splitname, "' split\n")
+      }
+      if (!is.null(check)){
+        warning(paste0(
+          "The covariance matrix of the base model for '",
+          splitname,
+          "' is singular. \nThis means that the prior does not change after the median is ",
+          "further than 0.25 away from the base model.\n",
+          "Here, that means that a median ", check,
+          "will not change the prior.",
+          "You have used a prior that corresponds to median = '", median_to_base,
+          "' where '", basename, "' is the base model \n(median is '",
+          median_to_base, "' away from '", basename,
+          "', which may be the opposite of that you specified)."
+        ), call. = FALSE)
+      }
+    }
+
     y_vals <- prior_intrinsic_base(
       lW = logit_ws,
       shape = 1,
       median = median_to_base,
       w0 = basemodel
     )
+
   }
 
   spline_coeffs <- getSplinePrior(logit_ws, y_vals)
   spline_coeffs$C[c(1, 121, 122), 3:4] <- 0 # make the spline linear in the tails
 
+  # return(list(spline_coeffs = spline_coeffs, intrinsic = intrinsic))
   return(spline_coeffs)
 
 }
 
-# if a split at a lower level is changed, we must re-compute the prior higher up, but not the priors further down
-update_pc_prior <- function(node_data, prior_data, matrix_data){
-
-  stop("Not working yet!!")
-
-}
 
 # calculate the matrices for the split nodes and add the leaf node matrices
 calc_all_covariance_matrices <- function(node_data, prior_data, matrix_data){
@@ -315,7 +411,7 @@ calc_all_covariance_matrices <- function(node_data, prior_data, matrix_data){
     child_nodes <- prior_data_tmp$children
 
     mats <- lapply(child_nodes, function(x) new_matrix_data[[get_matrix_data_index(new_matrix_data, x)]])
-    
+
     basemodel_weights <- get_basemodel_value(prior_data_tmp)
 
     new_matrix_data <- c(new_matrix_data, list(list(id = node_id, mat = make_basemodel_covmat(lapply(mats, function(x) x$mat), basemodel_weights))))

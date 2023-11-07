@@ -14,7 +14,7 @@ the file is saved in \code{tempdir()}.}
 
 \item{path}{Only used if file cannot be saved in the package folder. This is a path to a folder where the file
 is stored, do not specify a name for the file! (It will be called \code{"full_file.rds"}, and should not be changed.)
-This arguyment makes the \code{permanent} argument being ignored.}
+This argument makes the \code{permanent} argument being ignored.}
 }
 \value{
 Returns the stan-model invisibly.
@@ -30,12 +30,13 @@ already pre-compiled.
 }
 \details{
 Note that you will get a message saying something about integer division. The PC priors on variance proportions
-are represented by splines, and to evaluate them in Stan we look up values, and use integer division for this. This is
-not a problem.
+are represented by splines, and to evaluate them in Stan we look up values, and use integer division for this. This does
+not cause problems.
 }
 \examples{
-\dontrun{
-compile_stan(save = TRUE) # saving in tempdir()
+
+if (interactive() && requireNamespace("rstan")){
+  compile_stan(save = TRUE) # saving in tempdir()
 }
 
 }

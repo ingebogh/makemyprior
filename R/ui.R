@@ -1,7 +1,6 @@
 
 
 
-
 ui <- fluidPage(
 
   shinyjs::useShinyjs(),
@@ -18,10 +17,10 @@ ui <- fluidPage(
 
     # option panels
     column(4,
-            bsCollapse(id = "sidebarpanel", multiple = TRUE, open = c("choose_structure", "choose_priors", "latest"),#, "closing"),
-                      bsCollapsePanel(
+           shinyBS::bsCollapse(id = "sidebarpanel", multiple = TRUE, open = c("choose_structure", "choose_priors"),#, "closing"),
+                      shinyBS::bsCollapsePanel(
                         #style = "danger",
-                        title = "Modify model structure",
+                        title = "Modify tree structure",
                         value = "choose_structure",
 
                         column(12,
@@ -35,7 +34,7 @@ ui <- fluidPage(
                         ))
                       ), # end collapsable panel
 
-                      bsCollapsePanel(
+                      shinyBS::bsCollapsePanel(
                         title = "Change priors",
                         value = "choose_priors",
 
@@ -46,22 +45,12 @@ ui <- fluidPage(
                         column(6, style = 'padding: 0px;',
                         disabled(
                           radioButtons("weight_prior",
-                                       #h5("Prior on split"),
                                        NULL,
                                        choices = list("Dirichlet" = "dirichlet", "PC prior" = "pc"),
                                        selected = "dirichlet")
                         )
                         ),
                         column(6, style = 'padding: 0px;',
-                               # numericInput("median",
-                               #              "Median",
-                               #              value = 0.25, min = 0, max = 1, step = 0.05),
-                               # div(class = "basemodelradio",
-                               #     radioButtons("basemodel", "Base model",
-                               #                  choiceValues = c("mod1", "mod2", "comb"),
-                               #                  choiceNames = c("", "", ""),
-                               #                  selected = "mod1"
-                               #     ))
                                div(class = "basemodelradio",
                                    radioButtons("basemodel", "Base model",
                                                 choiceValues = c("mod1", "mod2", "comb"),
@@ -70,11 +59,12 @@ ui <- fluidPage(
                                    )),
                                numericInput("median",
                                             "Median",
-                                            value = 0.25, min = 0, max = 1, step = 0.05)
+                                            value = 0.5, min = 0, max = 1, step = 0.05),
+                               numericInput("conc_param",
+                                            "Concentration",
+                                            value = 0.5, min = 0.5, max = 1, step = 0.05)
                         )))
                         ),
-
-                        #div(class = "fix_height_12", textOutput("basemodel_name")),
 
                         h4(""),
                         fluidRow(
@@ -87,7 +77,7 @@ ui <- fluidPage(
                                        choices = list("Jeffreys'" = "jeffreys",
                                                       "PC prior" = "pc0",
                                                       "Inverse gamma" = "invgam",
-                                                      "Half-Cauchy" = "hc"),
+                                                      "Half-Cauchy (st.dev.)" = "hc"),
                                        selected = "jeffreys")
                         )
                         ),
@@ -98,20 +88,14 @@ ui <- fluidPage(
                           )
                       )), # end collapsable panel
 
-                      bsCollapsePanel(
+                      shinyBS::bsCollapsePanel(
                         title = "Parameterization",
                         value = "param_expressions",
                         div(style = "overflow-x: scroll", uiOutput("param_eq")),
                         checkboxInput("param_type_eq", label = "Function of variances", value = TRUE)
                       ), # end collapsable panel
-                      
-                      # bsCollapsePanel(
-                      #   title = "Variances",
-                      #   value = "variance_expressions",
-                      #   div(style = "overflow-x: scroll", uiOutput("var_eq"))
-                      # ), # end collapsable panel
 
-                      bsCollapsePanel(
+                      shinyBS::bsCollapsePanel(
                         title = "Priors",
                         value = "prior_distributions",
                         div(style = "overflow-x: scroll", uiOutput("prior_distributions"))
@@ -121,8 +105,8 @@ ui <- fluidPage(
              theme = "default",
              uiOutput("begin_quit_guide"),
              actionButton("reset", "Reset", style = "width:70px", class = "button1", title = "Reset everything to the settings you started with."),
-             actionButton("close", "Close", style = "width:70px", class = "button1", title = "Close application. The application stores your settings when closing. You can also just close the window, this will still save your settings."),
-             actionButton("close_and_run", "Close and run", style = "width:140px", class = "button1", title = "Close application and start inference with INLA immidiately.")
+             actionButton("close", "Close", style = "width:70px", class = "button1", title = "Close application. The application stores your settings when closing. You can also just close the window, this will still save your settings.")
+             # actionButton("close_and_run", "Close and run", style = "width:140px", class = "button1", title = "Close application and start inference with INLA immediately.")
            )
 
     ), # end sidebarpanel
@@ -132,12 +116,15 @@ ui <- fluidPage(
     mainPanel(width = 8,
 
               h4(
-                textOutput("model_eq")
+                uiOutput("model_eq"),
               ),
+
+              textOutput("no_pc"),
+              textOutput("intrinsic"),
 
               fluidRow(
                 column(12,
-                       visNetworkOutput("graph"),
+                       visNetwork::visNetworkOutput("graph"),
                        div(class = "fix_height_12", textOutput("chosen_node")),
                        h5("")
                 ),
@@ -154,18 +141,7 @@ ui <- fluidPage(
 
               )
     ) # end mainpanel
-  ), # end fluidrow
-
-  # debugging only
-  fluidRow(
-    column(12,
-           h4("Degugging:"),
-           textOutput("nodes_data_from_shiny"),
-           verbatimTextOutput("input_out"),
-           verbatimTextOutput("node_data_out"),
-           verbatimTextOutput("prior_data_out")
-    )
-  )
+  ) # end fluidrow
 
 )
 

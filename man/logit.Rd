@@ -7,7 +7,7 @@
 logit(x)
 }
 \arguments{
-\item{x}{Value between 0 and 1}
+\item{x}{Value between 0 and 1, or vector of such values}
 }
 \value{
 logit value
@@ -17,5 +17,6 @@ Calculates logit, log(x/(1-x)) = log(x) - log(1-x)
 }
 \examples{
 logit(0.5)
+logit(seq(0, 1, 0.1))
 
 }

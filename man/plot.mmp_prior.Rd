@@ -29,13 +29,18 @@ See \link[makemyprior]{plot_prior} (objects of class \code{mmp_prior}),
 \link[makemyprior]{plot_posterior_variance} (objects of class \code{mmp_inla}),
 }
 \examples{
-\dontrun{
 pri <- makemyprior_example_model()
 plot(pri)
-res_stan <- inference_stan(pri)
-plot(res_stan)
-res_inla <- inference_inla(pri)
-plot(res_inla)
+
+if (interactive() && requireNamespace("rstan")){
+  res_stan <- inference_stan(ex_prior, iter = 100)
+  # Note: For reliable results, increase the number of iterations (e.g., 'iter = 2000')
+  plot(res_stan)
+}
+
+if (interactive() && requireNamespace("INLA")){
+  res_inla <- inference_inla(pri)
+ plot(res_inla)
 }
 
 }

@@ -1,55 +1,46 @@
 
 
-#source("../pc_prior_functions.R")
 
 ### plotting functions
 
-#source("../functions_posterior_diagnostics.R")
-
-plot_priors <- function(prior_w, prior_tot, prior_cw, prior_weights, node_data, input_id){
+plot_priors <- function(prior_w, prior_tot, prior_cw, prior_weights, node_data, no_pc){
 
   df_pri <- data.frame()
-  # bold <- if (length(input_id) == 1) TRUE else FALSE
-  
+
   # for CW priors:
   for (i in 1:length(prior_cw)){
     if (prior_cw[[i]]$prior != "") {
       tmp_pr <- get_prior_expr(prior_cw[[i]], node_data, "cw")
-      if (bold && prior_cw[[i]]$id == input_id){
-        tmp_pr <- paste0(
-          "{\\color{black}{", tmp_pr, "}}"
-        )
-      }
-      pr_exprs <- c(pr_exprs, tmp_pr)
     }
   }
 
   # for CW priors:
   for (i in 1:length(prior_cw)){
-    tmp <- plot_prior_variance(prior_cw[[i]], node_data, "cw")
-    # if (nrow(tmp) > 0) tmp$panel_color <- if (bold && prior_cw[[i]]$id == input_id) "black" else "blue"
+    tmp <- df_prior_variance(prior_cw[[i]], node_data, "cw")
     df_pri <- rbind(df_pri, tmp)
   }
 
   # for total variances
   for (i in seq_len(length(prior_tot))){
-    tmp <- plot_prior_variance(prior_tot[[i]], node_data, "total")
-    # tmp$panel_color <- if (bold && prior_tot[[i]]$id == input_id) "black" else "blue"
+    tmp <- df_prior_variance(prior_tot[[i]], node_data, "total")
     df_pri <- rbind(df_pri, tmp)
   }
 
   # for HD priors
   for (i in seq_len(length(prior_w))){
     if (prior_w[[i]]$prior == "pc"){
-      tmp <- plot_pc_w(prior_w[[i]], prior_weights[[i]], node_data)
+      if (no_pc){ # if the PC priors should not be computed inside the app
+        tmp <- plot_pc_w_nocalc(prior_w[[i]], node_data)
+      } else {
+        tmp <- plot_pc_w(prior_w[[i]], prior_weights[[i]], node_data)
+      }
     } else { # dirichlet
       tmp <- plot_diri_w(prior_w[[i]], node_data)
     }
-    # tmp$panel_color <- if (bold && prior_weights[[i]]$id == input_id) "black" else "blue"
     df_pri <- rbind(df_pri, tmp)
   }
 
-  gg <- ggplot(df_pri, aes(x = x, y = y)) + geom_line(na.rm = TRUE) +
+  gg <- ggplot(df_pri, aes(x = .data$x, y = .data$y)) + geom_line(na.rm = TRUE) +
     facet_wrap(~param, labeller = label_parsed, scales = "free", ncol = 3) +
     theme(strip.text = element_text(size = 14)) +
     #ylab("Density") +
@@ -118,14 +109,12 @@ is_dual_split_node <- function(node_data, input) {
   if (no_of_children(node_data, input) == 2) return(TRUE) else return(FALSE)
 }
 
-#get_orig_node_name <- function(node_data, node_id) node_data$orid_nodedata$label[node_data$orig_nodedata$id %in% node_id]
-
 # get name of a node for the node clicked, function for given node id is in another file (called get_node_name)
 get_node_name_click <- function(node_data, input) node_data$nodes$label[node_data$nodes$id %in% input$current_node_id]
 
 # get the model type for the node clicked
 get_node_model_name_click <- function(node_data, model_data, input){
-  sapply(sapply(input$current_node_id, function(y) get_prior_number(model_data, y)), 
+  sapply(sapply(input$current_node_id, function(y) get_prior_number(model_data, y)),
          function(x) {
            if (is_leaf_node(node_data, list(current_node_id = x)) || are_detached(node_data, list(current_node_id = x))) {
              paste0(" (", model_data[[x]]$model, ")")
@@ -266,7 +255,7 @@ update_nodes_edges_remove <- function(node_data, input){
     nodes_below <- get_nodes_below(node_data, input$current_node_id)
     #nodes_new$level[edges_old$to[(edges_old$from == input$current_node_id)]] <- nodes_old$level[input$current_node_id]
     nodes_new$level[nodes_new$id %in% nodes_below] <- nodes_new$level[nodes_new$id %in% nodes_below] - 1
-    
+
     # # if the node that is removed is not the one with the highest id, change the id of all nodes with higher id
     # if (nrow(nodes_new) < max(nodes_new$id)){
     #   # change id of all nodes with higher id than the one that was removed
@@ -274,7 +263,7 @@ update_nodes_edges_remove <- function(node_data, input){
     #   edges_new$from[edges_new$from > node_to_remove$id] <- edges_new$from[edges_new$from > node_to_remove$id] -1
     #   edges_new$to[edges_new$to > node_to_remove$id] <- edges_new$to[edges_new$to > node_to_remove$id] -1
     # }
-    
+
     node_data$nodes <- nodes_new
     node_data$edges <- edges_new
 
@@ -482,7 +471,6 @@ set_detached_edges <- function(nodes, edges){
 # for attaching a detached node to another node
 # if a leaf node is chosen, a new split with the detach nodes and this leaf node is made
 # if a split node is chosen, the detached nodes are added to this split
-#attach_nodes <- function(node_data, input, initial_nodes){
 attach_nodes <- function(node_data, input){
 
   #detached_nodes_id <- node_data$nodes$id[node_data$nodes$status == "detached"]
@@ -539,8 +527,6 @@ attach_nodes <- function(node_data, input){
 
   } else if (is_split_node(node_data, list(current_node_id = node_in_tree))){ # add to an existing split
 
-    #browser()
-
     new_edges <- data.frame(from = node_in_tree,
                             to = detached_nodes_id,
                             #level = node_data$edges$level[node_data$edges$from == node_in_tree],
@@ -576,8 +562,8 @@ attach_nodes <- function(node_data, input){
     print(node_data)
 
   } else {
-    browser()
-    stop("Should not be possible to end here!!!")
+    # browser()
+    # stop("Should not be possible to end here!!!")
   }
 
   # if any detached nodes left, update their level
@@ -617,9 +603,9 @@ update_prior_w <- function(prior_data, node_data, input){
   } else { # pc prior
     # choose one of the nodes to be the basemodel (just take the one of them, user can set basemodel to 0 if the other should be basemodel)
     basemod_id <- node_data$edges$to[node_data$edges$from == node_id][1]
-    # in the basemodel, we have "basemodel" amount of the variance going to the node "basemodel_node"
-    # the median is the median of w_{basemodel_node/both_nodes}
-    # (thus basemodel = 0 to basemodel_node means no variance to that node, and basemodel == 1 means all variance to that node)
+    # in the basemodel, we have "basemodel" amount of the variance going to the node "above_node"
+    # the median is the median of w_{above_node/both_nodes}
+    # (thus basemodel = 0 to above_node means no variance to that node, and basemodel == 1 means all variance to that node)
 
     #basemodel_value <- input$basemodel
 
@@ -634,7 +620,8 @@ update_prior_w <- function(prior_data, node_data, input){
     prior_data[[split_index]] <- list(id = node_id,
                                       name = get_node_name(node_data, node_id),
                                       prior = "pc",
-                                      param = data.frame(basemodel_node = basemod_id, basemodel = basemodel_value, median = input$median),
+                                      param = data.frame(above_node = basemod_id, basemodel = basemodel_value,
+                                                         median = input$median, concentration = input$conc_param),
                                       children = node_data$edges$to[node_data$edges$from == node_id],
                                       no_children = 2) # can only be 2 with pc prior
   }
@@ -643,21 +630,10 @@ update_prior_w <- function(prior_data, node_data, input){
 
 }
 
-# TODO: make the function only update the parts that have changed
-# TODO FOR NOW: resets all priors to dirichlet (I think)
+
 # update prior when the tree changes, default dirichlet on all splits
 # for each merge/removal the nodes at that level and one level up are affected
 update_prior_w_merge_remove <- function(prior_data, node_data, change, input){
-
-  # make default priors for ALL splits
-  # TODO: change this so only the affected nodes get new priors
-  # prior_data <- list()
-  # for (node in unique(node_data$edges$from)) {
-  #   prior_data[[length(prior_data)+1]] <-
-  #     list(id = node, label = as.character(node_data$nodes$label[node]), prior = "dirichlet",
-  #          param = get_diri_param(sum(node_data$edges$from == node)),
-  #          no_children = sum(node_data$edges$from == node))
-  # }
 
   if (change == "merge"){ # if a new node was made
 
@@ -668,9 +644,9 @@ update_prior_w_merge_remove <- function(prior_data, node_data, change, input){
     stopifnot(length(unique(new_parent_node)) == 1) # if the selected nodes do not have the same parent, something is wrong
     new_parent_node <- new_parent_node[1]
     # prior of the new split
-    new_prior <- list(id = new_parent_node, 
-                      #name = as.character(node_data$nodes$label[new_parent_node]), 
-                      name = as.character(node_data$nodes$label[node_data$nodes$id == new_parent_node]), 
+    new_prior <- list(id = new_parent_node,
+                      #name = as.character(node_data$nodes$label[new_parent_node]),
+                      name = as.character(node_data$nodes$label[node_data$nodes$id == new_parent_node]),
                       prior = "dirichlet",
                       param = get_diri_param(sum(node_data$edges$from == new_parent_node)),
                       children = node_data$edges$to[node_data$edges$from == new_parent_node],
@@ -961,7 +937,7 @@ update_var_prior_params <- function(prior_name, params){
   } else if (prior_name == "jeffreys"){
     return(c(0, 0))
   } else {
-    browser()
+    stop("Not valid prior for variance parameter.", call. = FALSE)
   }
 }
 
@@ -994,8 +970,8 @@ update_basemodel_edges <- function(node_data, prior_data){
     # only dual splits can have a pc prior
     if (prior_data[[split_number]]$prior == "pc"){
 
-      base_place <- sub_edges$to == prior_data[[split_number]]$param$basemodel_node # index of basemodel_node
-      not_base_place <- sub_edges$to != prior_data[[split_number]]$param$basemodel_node # the other node in this split
+      base_place <- sub_edges$to == prior_data[[split_number]]$param$above_node # index of basemodel_node
+      not_base_place <- sub_edges$to != prior_data[[split_number]]$param$above_node # the other node in this split
 
       # the basemodel_node gets the median the user chooses, the other node gets 1-median
       sub_edges$width[base_place] <- prior_data[[split_number]]$param$median
@@ -1065,7 +1041,6 @@ add_remove_AB <- function(node_data, add, node_ids = 0){
 
 # calculate the variance proportion on each node according to how much variance goes to each of them
 # detached nodes are not included
-# TODO: may only work for one top node (not several), so must probably be done for each tree
 calc_variance_proportions <- function(node_data){
 
   tmp_nodes <- node_data$nodes
@@ -1100,6 +1075,9 @@ calc_variance_proportions <- function(node_data){
     }
 
   }
+
+  # in case something goes wrong here
+  if (any(tmp_nodes$varprop < 0) || any(tmp_nodes$varprop > 1)) tmp_nodes$varprop <- rep(1/length(tmp_nodes$varprop), length(tmp_nodes$varprop))
 
   node_data$nodes$varprop <- tmp_nodes$varprop
 
@@ -1209,17 +1187,16 @@ enable_remove <- function(node_data, input){
 ### making the variance equations
 
 text_latex_param <- function(node_data, prior_weight, prior_totvar, prior_cw, response_name, func_of_var){
-  
+
   if (!func_of_var) {
     make_var_eq_latex(node_data, prior_weight, prior_totvar, prior_cw, response_name)
   } else {
     make_par_eq_latex(node_data, prior_weight, prior_totvar, prior_cw, response_name)
   }
-  
+
 }
 
 # variances as function of parameters
-# TODO: use separate function for the node-names, so the underscores in the original names remains
 make_var_eq_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, response_name){
 
   # for each split in each tree, we store the name of the weight(s) of that split
@@ -1234,7 +1211,7 @@ make_var_eq_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, r
     top_node <- prior_totvar[[tree]]$id
     weight_frame <- data.frame()
 
-    totvar <- sprintf("V_{%s}", gsub("_", ",", prior_totvar[[get_prior_number(prior_totvar, top_node)]]$name))
+    totvar <- sprintf("V_{%s}", get_node_strings(get_leaf_nodes(node_data, top_node), node_data))
 
     node_data_this_tree <- get_node_data_for_tree(node_data, top_node)
 
@@ -1244,10 +1221,10 @@ make_var_eq_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, r
 
       children <- get_children(node_data_this_tree, list(current_node_id = split_id))
 
-      under <- get_node_name(node_data_this_tree, split_id)
-      over <- sapply(children, function(x) get_node_name(node_data_this_tree, x))
+      under <- get_node_strings(get_leaf_nodes(node_data_this_tree, split_id), node_data_this_tree)
+      over <- sapply(children, function(x) get_node_strings(get_leaf_nodes(node_data_this_tree, x), node_data_this_tree))
 
-      weight_names <- sapply(1:(length(children)-1), function(x) sprintf("\\omega_{\\frac{%s}{%s}}", gsub("_", ",", over[x]), gsub("_", ",", under)))
+      weight_names <- sapply(1:(length(children)-1), function(x) sprintf("\\omega_{\\frac{%s}{%s}}", over[x], under))
       weight_names <- c(weight_names, paste(c("(1-", paste(weight_names, sep = "", collapse = "-"), ")"), sep = "", collapse = ""))
 
       weight_frame <- rbind(weight_frame, data.frame(id = children, wn = weight_names))
@@ -1300,84 +1277,85 @@ make_var_eq_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, r
 
 # parameters as function of variances
 make_par_eq_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, response_name){
-  
+
   comps <- c()
-  
+
   # for each total variance, find the variances it is a sum of.
   # then find the weights belonging to this total variance and which variances that are involved in that weight.
   # at last include CW priors (if any).
-  
+
   for (tree in seq_len(length(prior_totvar))){
-    
+
     top_node <- prior_totvar[[tree]]$id
     leaf_nodes <- get_leaf_nodes(node_data, top_node)
-    
+
     totvar <- paste0(
-      "V_{", paste0(get_node_name(node_data, leaf_nodes), sep = "", collapse = ","),
+      "V_{", paste0(gsub("_", "\\_", get_node_name(node_data, leaf_nodes), fixed = TRUE), sep = "", collapse = ","),
       "}",
       "=",
-      paste0("\\sigma_{", get_node_name(node_data, leaf_nodes), "}^2", sep = "", collapse = "+")
+      paste0("\\sigma_{", gsub("_", "\\_", get_node_name(node_data, leaf_nodes), fixed = TRUE), "}^2", sep = "", collapse = "+")
     )
-    
+
     weights <- c()
-    
+
     for (we in seq_len(length(prior_weight))){
-      
+
       split_node <- prior_weight[[we]]$id
       leaf_nodes_in_split <- get_leaf_nodes(node_data, split_node)
       child_nodes <- get_children(node_data, list(current_node_id = split_node))
-      
-      under <- get_node_name(node_data, leaf_nodes_in_split)
-      
+
+      under <- gsub("_", "\\_", get_node_name(node_data, leaf_nodes_in_split), fixed = TRUE)
+
       if (prior_weight[[we]]$no_children == 2){ # dual split
-        
+
         weights <- c(weights, paste0(
-          "\\omega_{\\frac{", 
-          paste0(get_node_name(node_data, child_nodes[1]), sep = "", collapse = ","), 
-          "}{", 
-          paste0(under, sep = "", collapse = ","), 
+          "\\omega_{\\frac{",
+          paste0(gsub("_", "\\_", get_node_name(node_data, child_nodes[1]), fixed = TRUE), sep = "", collapse = ","),
+          "}{",
+          paste0(under, sep = "", collapse = ","),
           "}} = \\frac{",
-          paste0("\\sigma_{", get_node_name(node_data, child_nodes[1]), "}^2", sep = "", collapse = "+"),
+          paste0("\\sigma_{", gsub("_", "\\_", get_node_name(node_data, child_nodes[1]), fixed = TRUE), "}^2", sep = "", collapse = "+"),
           "}{",
           paste0("\\sigma_{", under, "}^2", sep = "", collapse = "+"),
           "}"
         )
         )
-        
+
       } else { # multi-split
-        
+
         for (ind in 1:(prior_weight[[we]]$no_children-1)){
           weights <- c(weights, paste0(
-            "\\omega_{\\frac{", 
-            paste0(get_node_name(node_data, child_nodes[ind]), sep = "", collapse = ","), 
-            "}{", 
+            "\\omega_{\\frac{",
+            paste0(gsub("_", "\\_", get_node_name(node_data, child_nodes[ind]), fixed = TRUE), sep = "", collapse = ","),
+            "}{",
             paste0(under, sep = "", collapse = ","),
             "}} = \\frac{",
-            paste0("\\sigma_{", get_node_name(node_data, child_nodes[ind]), "}^2", sep = "", collapse = "+"),
+            paste0("\\sigma_{", gsub("_", "\\_", get_node_name(node_data, child_nodes[ind]), fixed = TRUE), "}^2", sep = "", collapse = "+"),
             "}{",
             paste0("\\sigma_{", under, "}^2", sep = "", collapse = "+"),
             "}"
           ))
         }
-        
+
       }
-      
+
     }
-    
+
     comps <- c(comps, c(totvar, weights))
-    
+
   }
-  
+
   cw <- c()
   for (cw_ind in seq_len(length(prior_cw))){
     if (prior_cw[[cw_ind]]$prior != ""){
       cw <- c(cw, paste0(
-        "\\sigma_{", prior_cw[[cw_ind]]$name, "}^2", "=", "\\sigma_{", prior_cw[[cw_ind]]$name, "}^2"
+        "\\sigma_{", gsub("_", "\\_", prior_cw[[cw_ind]]$name, fixed = TRUE), "}^2", "=",
+        "\\sigma_{", gsub("_", "\\_", prior_cw[[cw_ind]]$name, fixed = TRUE), "}^2"
       ))
     }
   }
-  
-  
+
+
   return(
     withMathJax(
       helpText(
@@ -1388,7 +1366,7 @@ make_par_eq_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, r
       )
     )
   )
-  
+
 }
 
 # return latex-code for the expression for the prior distribution on the parameter provided
@@ -1399,7 +1377,7 @@ get_prior_expr <- function(prior_data, node_data, param = c("cw", "totvar", "wei
   if (param == "cw"){
 
     if (prior_data$prior == "pc0") {
-      param_name <- sprintf("\\sigma_{%s}", gsub("_", "\\_", prior_data$name, fixed = TRUE), "}")
+      param_name <- sprintf("\\sigma_{%s}", gsub("_", "\\_", prior_data$name, fixed = TRUE)) #, "}")
       prior_expr <- sprintf("\\mathrm{PC}_{\\mathrm{0}}(%s, %s)", prior_data$param[1], prior_data$param[2])
     } else if (prior_data$prior == "jeffreys"){
       param_name <- sprintf("\\sigma_{%s}^2", gsub("_", "\\_", prior_data$name, fixed = TRUE))
@@ -1408,7 +1386,7 @@ get_prior_expr <- function(prior_data, node_data, param = c("cw", "totvar", "wei
       param_name <- sprintf("\\sigma_{%s}^2", gsub("_", "\\_", prior_data$name, fixed = TRUE))
       prior_expr <- paste0("\\mathrm{InvGam}(", prior_data$param[1], ",", prior_data$param[2], ")")
     } else if (prior_data$prior == "hc"){
-      param_name <- sprintf("\\sigma_{%s}", gsub("_", "\\_", prior_data$name, fixed = TRUE), "}")
+      param_name <- sprintf("\\sigma_{%s}", gsub("_", "\\_", prior_data$name, fixed = TRUE)) #, "}")
       prior_expr <- paste0("\\mathrm{HC}(", prior_data$param[1], ")")
     }
 
@@ -1445,7 +1423,7 @@ get_prior_expr <- function(prior_data, node_data, param = c("cw", "totvar", "wei
     } else if (prior_data$prior == "pc"){
 
       t_under <- get_node_strings(get_leaf_nodes(node_data, prior_data$id), node_data)
-      t_over <- get_node_strings(get_leaf_nodes(node_data, prior_data$param$basemodel_node), node_data)
+      t_over <- get_node_strings(get_leaf_nodes(node_data, prior_data$param$above_node), node_data)
       param_name <- sprintf("\\omega_{\\frac{%s}{%s}}", t_over, t_under)
 
       if (prior_data$param$basemodel == 0){
@@ -1453,7 +1431,7 @@ get_prior_expr <- function(prior_data, node_data, param = c("cw", "totvar", "wei
       } else if (prior_data$param$basemodel == 1) {
         prior_expr <- sprintf("\\mathrm{PC}_{\\mathrm{1}}(%s)", prior_data$param$median)
       } else {
-        prior_expr <- sprintf("\\mathrm{PC}_{\\mathrm{M}}(%s)", prior_data$param$median)
+        prior_expr <- sprintf("\\mathrm{PC}_{\\mathrm{M}}(%s, %s)", prior_data$param$median, prior_data$param$concentration)
       }
 
     }
@@ -1468,15 +1446,15 @@ get_prior_expr <- function(prior_data, node_data, param = c("cw", "totvar", "wei
 
 # make proper strings for the node-names, with "," instead of "_" (not for the node_data-objects, only latex-things)
 get_node_strings <- function(nodes, node_data){
-  
+
   this_name <- paste0(get_node_name(node_data, nodes), sep = "", collapse = ",")
   this_name <- gsub("_", "\\_", this_name, fixed = TRUE)
-  
+
   return(this_name)
-  
+
 }
 
-### making expressions for the prior of each model parameter
+# making expressions for the prior of each model parameter
 make_pr_dists_latex <- function(node_data, prior_weight, prior_totvar, prior_cw, input_id){
 
   pr_exprs <- c()
@@ -1531,7 +1509,72 @@ make_pr_dists_latex <- function(node_data, prior_weight, prior_totvar, prior_cw,
 
 }
 
+# make model equation in latex
+make_model_eq_latex <- function(initial_args){
 
+  if (initial_args$.family == "gaussian"){
+    meq <- "Gaussian likelihood. \\(y = "
+  } else if (initial_args$.family == "binomial") {
+    meq <- "Binomial likelihood. \\(\\eta = "
+  } else {
+    meq <- "Poisson likelihood. \\(\\eta = "
+  }
+
+  if (initial_args$.use_intercept) meq <- paste0(meq, "\\mu +", collapse = "")
+  for (ind in seq_along(initial_args$.fixef_names))
+    meq <- paste0(meq, paste0(c(initial_args$.fixef_names[ind], "\\beta_{", gsub("_", "\\_", initial_args$.fixef_names[ind], fixed = TRUE),
+                                "} ",
+                                " + "), collapse = ""), collapse = "")
+  for (ind in seq_along(initial_args$.nodenames)){
+    # if (initial_args$.nodenames[ind] == "eps"){ # if this is the residual term, use epsilon instead of "eps"
+    #   meq <- paste0(c("(+ ", meq, gsub("_", "\\_", initial_args$.nodenames[ind], fixed = TRUE, ")")), collapse = "")
+    # } else {
+      meq <- paste0(c(meq, gsub("_", "\\_", initial_args$.nodenames[ind], fixed = TRUE)), collapse = "")
+    # }
+
+    if (ind < length(initial_args$.nodenames)) meq <- paste0(c(meq, " + "), collapse = "")
+  }
+  meq <- paste0(meq, ", \\ \\eta = g(\\mu) = ", collapse = "")
+  meq <- if (initial_args$.family == "gaussian"){
+    paste0(meq, "\\mu", collapse = "")
+  } else if (initial_args$.family == "poisson") {
+    paste0(meq, "\\mathrm{log}(\\mu)", collapse = "")
+  } else if (initial_args$.family == "binomial"){
+    paste0(meq, "\\mathrm{logit}(\\mu)", collapse = "")
+  }
+
+  return(paste0(c(meq, "\\)"), collapse = ""))
+  # return(paste0(c("\\(", meq, "\\)"), collapse = ""))
+
+}
+
+# make model equation, in r mathematical expression (not used)
+make_model_eq_rexpr <- function(initial_args){
+  meq <- c(expression(eta ~ "="))
+  if (initial_args$.use_intercept) meq <- c(meq, expression(mu ~ "+"))
+  for (ind in seq_along(initial_args$.fixef_names)) meq <- c(meq, bquote(beta[.(initial_args$.fixef_names[ind])] ~ "+"))
+  for (ind in seq_along(initial_args$.nodenames)){
+    if (ind == length(initial_args$.nodenames)){ # no plus on the last element, as it is the last
+      meq <- c(meq, bquote(.(initial_args$.nodenames[ind]) * ","))
+    } else {
+      meq <- c(meq, bquote(.(initial_args$.nodenames[ind]) ~ "+"))
+    }
+  }
+  meq <- c(meq, expression(eta ~ "=" ~ g * "(" * mu * ")" ~ "=" ))
+  meq <- if (initial_args$.family == "gaussian"){
+    c(meq, expression(mu))
+  } else if (initial_args$.family == "poisson"){
+    c(meq, expression(log(mu)))
+  } else if (initial_args$.family == "binomial"){
+    c(meq, expression(logit(mu)))
+  }
+
+  if (initial_args$.no_pc){
+    c(meq, "\nWill not compute the PC priors on splits before the app closes.")
+  }
+
+  return(meq)
+}
 
 
 ### for the guide
@@ -1705,7 +1748,7 @@ guide_make_message_to_user_step2 <- function(guide_data, node_data, prior_data, 
   } else if (is_top_node(node_data, input)){
     msg <- paste(
       msg,
-      "This is a top node. You can choose a prior for the total variance of this tree. "
+      "This is a top node. You can choose a prior for the total variance of this tree. Note that the Half-Cauchy prior is a prior on standard deviations, while the others are on variances. "
     )
     if (sum(node_data$nodes$top_node) == 1 && sum(node_data$nodes$status == "detached") == 0){
       msg <- paste(
@@ -1716,7 +1759,7 @@ guide_make_message_to_user_step2 <- function(guide_data, node_data, prior_data, 
   } else if (are_detached(node_data, input)){
     msg <- paste(
       msg,
-      "This is a detached node. The variance of the effect this node represents can be given a prior that is independent of the other components in the model."
+      "This is a detached node. The variance of the effect this node represents can be given a prior that is independent of the other components in the model. Note that the Half-Cauchy prior is a prior on standard deviations, while the others are on variances."
     )
   }
   if (is_split_node(node_data, input)){
