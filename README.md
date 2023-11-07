@@ -2,7 +2,7 @@
 # makemyprior
 
 makemyprior is a tool for easy prior construction and visualization. It
-helps to formulates joint prior distributions for variance parameters in
+helps to formulate joint prior distributions for variance parameters in
 latent Gaussian models. The resulting prior is robust and can be created
 in an intuitive way. A graphical user interface (GUI) can be used to
 choose the joint prior, where the user can click through the model and
