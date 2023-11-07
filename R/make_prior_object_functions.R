@@ -1797,7 +1797,7 @@ make_besag_prec_mat <- function(graph_path){
     # how many -1's on this row:
     no_neighb <- all_lines[[ind+1]][2]
     stopifnot(length(all_lines[[ind+1]])-2 == no_neighb)
-    mat[ind, all_lines[[ind+1]][c(-1, -2)]] <- -1
+    if (no_neighb > 0) mat[ind, all_lines[[ind + 1]][c(-1, -2)]] <- -1
     mat[ind, ind] <- no_neighb
 
   }
@@ -1919,17 +1919,18 @@ fix_size_covmat <- function(new_mat, old_mat, index, eff_name){
 
 }
 
+max_pr_num <- function() return(6)
 
 get_variance_prior_number <- function(prior_names){
 
-  pr_names <- c("jeffreys", "pc0", "invgam", "hc", "")
+  pr_names <- c("jeffreys", "pc0", "invgam", "hc", "hn", "")
 
   pr_num <- c()
   for (i in 1:length(prior_names)){
     pr_num[i] <- which(pr_names == prior_names[i])
   }
 
-  pr_num[pr_num == 5] <- 0
+  pr_num[pr_num == max_pr_num()] <- 0
 
   return(pr_num)
 
@@ -2088,8 +2089,8 @@ inference_inla <- function(prior_obj, use_likelihood = TRUE,
 
   # replace jeffreys prior with gaussian prior on total variance if no likelihood
   if (!use_likelihood) {
-    inla_jpr_data$totvar_prior_info[inla_jpr_data$totvar_prior_info[,1] == 1,1] <- 5
-    inla_jpr_data$totvar_prior_numbers[inla_jpr_data$totvar_prior_numbers == 1] <- 5
+    inla_jpr_data$totvar_prior_info[inla_jpr_data$totvar_prior_info[,1] == 1,1] <- max_pr_num()
+    inla_jpr_data$totvar_prior_numbers[inla_jpr_data$totvar_prior_numbers == 1] <- max_pr_num()
   }
 
   if (!is.null(input_args$control.expert)){
@@ -2414,7 +2415,11 @@ choose_prior_lpdf <- function(x, prior_number, param){
     return(
       x/2 - log(pi) - log(param[1] + exp(x)/param[1])
     )
-  } else if (prior_number == 5) {
+  } else if (prior_number == 5) { # half-normal(scale) (stdev in normal)
+    return(
+      -0.5*log(2*pi) - log(param[1]) + x/2 - exp(x)/(2*param[1]^2)
+    )
+  } else if (prior_number == max_pr_num()) {
     return(dnorm(x, 0, 1, log = TRUE));
   } else {
     return(0)
@@ -2670,6 +2675,8 @@ get_prior_expr_text <- function(prior_data, node_data, param = c("cw", "totvar",
       prior_expr <- paste0("InvGam(", prior_data$param[1], ", ", prior_data$param[2], ")\n")
     } else if (prior_data$prior == "hc"){
       prior_expr <- paste0("HC(", prior_data$param[1], ")\n")
+    } else if (prior_data$prior == "hn"){
+      prior_expr <- paste0("Half-Normal(", prior_data$param[1], ")\n")
     }
 
   } else { # weight

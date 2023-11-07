@@ -22,6 +22,14 @@ real halfcauchy_logvar_lpdf(real x, real scale){
   );
 }
 
+// half normal on standard deviation
+// input is log variance
+real halfnormal_logvar_lpdf(real x, real scale){
+  return(
+    -0.5*log(2*pi()) - log(scale) + x/2 - exp(x)/(2*scale^2)
+  );
+}
+
 // pc prior (exponential on standard deviation)
 // input is log variance
 real pc_logvar_lpdf(real x, real U, real alpha){
@@ -44,7 +52,9 @@ real choose_prior_lpdf(real x, real prior_number, real[] param){
     return(invgamma_logvar_lpdf(x | param[1], param[2]));
   } else if (prior_number == 4){
     return(halfcauchy_logvar_lpdf(x | param[1]));
-  } else if (prior_number == 5) {
+  } else if (prior_number == 5){
+    return(halfnormal_logvar_lpdf(x | param[1]));
+  } else if (prior_number == 6) {
     return(normal_lpdf(x | 0, 1));
   } else {
     return(0);
