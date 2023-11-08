@@ -3097,12 +3097,13 @@ makemyprior_models <- function(type = c("prior", "latent", "likelihood"), select
 makemyprior_options_prior <- function(prs = NULL){
 
   priors_var <- data.frame(
-    internal_name = c("pc", "hc", "invgam", "jeffreys"),
-    full_name = c("PC_0", "Half-Cauchy", "Inverse Gamma", "Jeffreys'"),
-    which_param = c("st.dev.", "st.dev.", "variance", "variance"),
-    params = c("U and alpha in Prob(stdev > U) = alpha", "scale", "shape and scale", "none"),
+    internal_name = c("pc", "hc", "hn", "invgam", "jeffreys"),
+    full_name = c("PC_0", "Half-Cauchy", "Half-normal", "Inverse Gamma", "Jeffreys'"),
+    which_param = c("st.dev.", "st.dev.", "st.dev", "variance", "variance"),
+    params = c("U and alpha in Prob(stdev > U) = alpha", "scale", "scale", "shape and scale", "none"),
     example = c("'list(prior = \"pc\", param = c(U, alpha))'",
                 "'list(prior = \"hc\", param = shape)'",
+                "'list(prior = \"hn\", param = shape)'",
                 "'list(prior = \"invgam\", param = c(shape, scale))'",
                 "'list(prior = \"jeffreys\")'")
   )
