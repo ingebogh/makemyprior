@@ -570,8 +570,8 @@ make_valid_V_prior <- function(new_prior, old_prior, lab){
     tmp_prior$param <- c(0, 0)
     return(tmp_prior)
   } else {
-    if (tmp_prior$prior == "hc"){
-      if (length(new_prior$param) > 1) warning("You have specified two hyperparameters for Half-Cauchy, but need only one. Using the first one.", call. = FALSE)
+    if (tmp_prior$prior %in% c("hc", "hn")){
+      if (length(new_prior$param) > 1) warning("You have specified two hyperparameters for half-Cauchy/half-normal, but need only one. Using the first one.", call. = FALSE)
       if (new_prior$param[1] <= 0) stop("The hyperparameter for Hald-Cauchy must be positive.", call. = FALSE)
       tmp_prior$param <- c(new_prior$param[1], 0)
     } else {
