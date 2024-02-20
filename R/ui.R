@@ -77,7 +77,8 @@ ui <- fluidPage(
                                        choices = list("Jeffreys'" = "jeffreys",
                                                       "PC prior" = "pc0",
                                                       "Inverse gamma" = "invgam",
-                                                      "Half-Cauchy (st.dev.)" = "hc"),
+                                                      "Half-Cauchy (st.dev.)" = "hc",
+                                                      "Half-normal (st.dev.)" = "hn"),
                                        selected = "jeffreys")
                         )
                         ),
@@ -119,20 +120,21 @@ ui <- fluidPage(
                 uiOutput("model_eq"),
               ),
 
-              textOutput("no_pc"),
-              textOutput("intrinsic"),
-
               fluidRow(
                 column(12,
                        visNetwork::visNetworkOutput("graph"),
                        div(class = "fix_height_12", textOutput("chosen_node")),
+                       h5(""),
+                       textOutput("intrinsic"),
                        h5("")
                 ),
 
                 # plots
-                column(width = 12, #style = "border: 1px solid black; background-color: white",
+                column(width = 12, # style = "border: 1px solid black; background-color: white",
                        uiOutput("plot_or_next_step_button"),
 
+                       textOutput("no_pc"),
+                       
                        textOutput("guide_message"),
 
                        disabled(plotOutput("all_plots"))

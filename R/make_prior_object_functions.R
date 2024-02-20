@@ -23,7 +23,7 @@ possible_models <- function() return(c("iid", "linear", "rw1", "rw2", "generic0"
 #' Function for defining a latent component for the HD prior package. All model components must be specified, and if an HD
 #' prior is used, this is specified later. See \link[makemyprior]{make_prior} for more details and examples.
 #' @param label Name of the component (short names is an advantage as they are used in the app), no default (MUST be provided)
-#' @param model Type of model, default is "iid" (see list of models: \link[makemyprior]{makemyprior_models}).
+#' @param model Type of model, default is "iid" (see list of models: \link[makemyprior]{makemyprior_models}, \code{makemyprior_models("latent")}).
 #' @param constr Sum-to-zero constraints on component (default TRUE)
 #' @param lin_constr Linear sum-to-zero constraint, TRUE/FALSE (only for rw2 and only for Stan)
 #' @param Cmatrix Precision for this component when \code{model = "generic0"}.
@@ -133,6 +133,7 @@ mc_required_input <- function(model_type){
 #' Make a prior object with all necessary information about the prior and model.
 #' The object can either be sent to \link[makemyprior]{makemyprior_gui}
 #' or used directly for inference with Stan (\link[makemyprior]{inference_stan}) or INLA (\link[makemyprior]{inference_inla}).
+#' \link[makemyprior]{eval_joint_prior} can be used to evaluate the prior.
 #' @param formula A formula object, using the function \link[makemyprior]{mc}.
 #' @param data The data used in the model, as a \code{data.frame} or \code{list}. All elements must have the same length.
 #' @param family A string indicating the likelihood family. \code{gaussian} with identity link is the default.
@@ -313,7 +314,6 @@ make_prior <- function(formula, data, family = "gaussian",
     }
     if (length(hd_prior$V) > 0){
     # if (!is.null(hd_prior$V)){
-      # TODO: must check that the list is actually named as the tree
       # go through prior_data and see if the user has specified a prior
       for (ind in 1:length(prior_data$total_variance)){
         which_match <- which(names(hd_prior$V) %in% old_new_names$old[old_new_names$new == prior_data$total_variance[[ind]]$name])
@@ -325,7 +325,6 @@ make_prior <- function(formula, data, family = "gaussian",
   }
   if (length(hd_prior$cw) > 0){
   # if (!is.null(hd_prior$cw)){
-    # TODO: must check that the list is actually named as the tree
     # go through prior_data and see if the user has specified a prior
     for (ind in 1:length(prior_data$cw_priors)){
       which_match <- which(names(hd_prior$cw) %in% old_new_names$old[old_new_names$new == prior_data$cw_priors[[ind]]$name])
@@ -358,8 +357,9 @@ make_prior <- function(formula, data, family = "gaussian",
 
   covmats <- lapply(covmats_us, function(x) return(x/typical_variance(x)))
 
-  dim_covmats <- sapply(covmats, nrow)
-  if (any(dim_covmats) >= 500) {
+  # dim_covmats <- sapply(covmats, nrow)
+  # if (any(dim_covmats) >= 500) {
+  if (length(prior$response) > 500) {
     warning("Computation of the priors may be slow due to the size of the effects.", call. = FALSE)
   }
 
@@ -378,6 +378,9 @@ make_prior <- function(formula, data, family = "gaussian",
 
   inference_data <- NULL
   if (family == "binomial") inference_data <- list(Ntrials = data$Ntrials)
+  if (family == "poisson"){
+    inference_data <- if (is.null(data$E)) list(E = rep(1, length(prior$response))) else list(E = data$E)
+  }
 
   pr <- make_valid_prior_object(
     data = list(fixed = lapply(prior$fixed_effects, function(x) x$data), random = lapply(prior$random_effects, function(x) x$data)),
@@ -570,8 +573,8 @@ make_valid_V_prior <- function(new_prior, old_prior, lab){
     tmp_prior$param <- c(0, 0)
     return(tmp_prior)
   } else {
-    if (tmp_prior$prior == "hc"){
-      if (length(new_prior$param) > 1) warning("You have specified two hyperparameters for Half-Cauchy, but need only one. Using the first one.", call. = FALSE)
+    if (tmp_prior$prior %in% c("hc", "hn")){
+      if (length(new_prior$param) > 1) warning("You have specified two hyperparameters for half-Cauchy/half-normal, but need only one. Using the first one.", call. = FALSE)
       if (new_prior$param[1] <= 0) stop("The hyperparameter for Hald-Cauchy must be positive.", call. = FALSE)
       tmp_prior$param <- c(new_prior$param[1], 0)
     } else {
@@ -660,7 +663,15 @@ decompose_formula <- function(formula, family, data){
         fixed_effects[[tmp$label]]$data <- eval(parse(text = tmp$label), data)
       } else {
         random_effects[[tmp$label]] <- tmp
-        random_effects[[tmp$label]]$data <- eval(parse(text = tmp$label), data)
+        tmp2 <- eval(parse(text = tmp$label), data)
+        if (any(round(tmp2) != tmp2)){
+          # warning(paste0("The indexes for random effects must be integers, but the effect ", tmp$label,
+          #                " is transformed to integer indexes. This may be done incorrectly, you should check."
+          #                ), call. = FALSE)
+          # tmp2 <- as.integer(factor(tmp2, levels = unique(tmp2)))
+          stop("The indexes for random effects must be integers.", call. = FALSE)
+        }
+        random_effects[[tmp$label]]$data <- tmp2
       }
 
     } else { # fixed effect
@@ -760,9 +771,9 @@ make_valid_prior_object <- function(data, args){
       covmat <- make_rw2_mat(n = length(unique(data$random[[non_iids[ind]]])), type = "cov")
       args$latent[[non_iids[ind]]]$scaling_factor <- typical_variance(covmat)
     } else if (mods[non_iids[ind]] == "generic0"){
-      # browser()
       # index <- which(names(covmats) == names(covmats_input)[ind])
-      index <- which(names(covmats_input) == names(covmats)[ind]) # maybe non_iids[ind] and not ind?
+      # index <- which(names(covmats_input) == names(covmats)[ind]) 
+      index <- which(names(covmats_input) == names(covmats)[non_iids[ind]])
       covmat <- covmats_input[[index]]
     } else if (mods[non_iids[[ind]]] == "besag"){
       precmat <- make_besag_prec_mat(args$latent[[non_iids[[ind]]]]$graph)
@@ -1269,22 +1280,28 @@ makemyprior_gui <- function(prior, guide = FALSE, no_pc = FALSE){
 
   prior$.initial_args <- update_initial_args(initial_args, val)
 
-  res <- c(val, list(weight_priors = calculate_pc_prior(val$node_data, val$prior_data$weights, prior$covmats, gui = FALSE),
-                     data = prior$data,
-                     covmats = prior$covmats,
-                     which_covmats_structured = prior$which_covmats_structured,
-                     .initial_args = prior$.initial_args,
-                     response = prior$response,
-                     latent = prior$latent,
-                     tree = make_hd_prior_string(val$node_data),
-                     use_intercept = prior$use_intercept,
-                     prior_intercept = prior$prior_intercept,
-                     prior_fixed = prior$prior_fixed,
-                     # model_data = prior$model_data,
-                     inference_data = prior$inference_data,
-                     formula = prior$formula,
-                     family = prior$family
-                     ))
+  res <- prior
+  res$prior_data <- val$prior_data
+  res$node_data <- val$node_data
+  res$weight_priors <- calculate_pc_prior(val$node_data, val$prior_data$weights, prior$covmats, gui = FALSE)
+  res$tree <- make_hd_prior_string(val$node_data)
+  # res <- c(val, list(weight_priors = calculate_pc_prior(val$node_data, val$prior_data$weights, prior$covmats, gui = FALSE),
+  #                    data = prior$data,
+  #                    covmats = prior$covmats,
+  #                    which_covmats_structured = prior$which_covmats_structured,
+  #                    .initial_args = prior$.initial_args,
+  #                    response = prior$response,
+  #                    latent = prior$latent,
+  #                    tree = make_hd_prior_string(val$node_data),
+  #                    use_intercept = prior$use_intercept,
+  #                    prior_intercept = prior$prior_intercept,
+  #                    prior_fixed = prior$prior_fixed,
+  #                    # model_data = prior$model_data,
+  #                    inference_data = prior$inference_data,
+  #                    formula = prior$formula,
+  #                    family = prior$family,
+  #                    lower_cholesky = prior$lower_cholesky
+  #                    ))
 
   class(res) <- "mmp_prior"
 
@@ -1335,7 +1352,8 @@ update_initial_args <- function(old_initial_args, prior_obj){
 #'   \item{\code{init}}{initial value of the model parameters on internal parameterization (log-variances and covariate coefficients)}
 #'   \item{\code{seed}}{seed value for random number generation}
 #' }
-#' See \link[rstan]{sampling} for more details. Note that for inference with \code{stan}, the \code{Ntrials} argument must be included in the data object, and
+#' See \link[rstan]{sampling} for more details. Note that for inference with \code{stan}, the \code{Ntrials} (the size parameter for binomial likelihood) and 
+#' \code{E} (the mean E_i in  E_i*exp(eta_i) for Poisson likelihood) argument must be included in the data object, and
 #' cannot be provided to this function.
 #' @keywords rstan
 #' @return A named list with a prior object (\code{prior}), a stan-object (\code{stan}) and some data stan requires (\code{stan_data}).
@@ -1463,7 +1481,7 @@ compile_stan <- function(save = FALSE, permanent = FALSE, path = NULL){
   stan_file <- paste0(path.package("makemyprior"), "/full_file.stan")
 
   if (!is.null(path)){
-    if (save) warning("You are now saving the compiled Stan-object somewhere outside the package. You must provide this path to 'inference_stan' every time you use that function. Try without specifying 'path'.")
+    if (save) warning("You are now saving the compiled Stan-object somewhere outside the package. You must provide this path to 'inference_stan' every time you use that function.")
   } else {
     if (permanent){
       path <- path.package("makemyprior")
@@ -1506,7 +1524,7 @@ make_stan_data_object <- function(prior_obj){
     # if (prior_obj$likelihood == "gaussian" && !is.null(effects$eps)){
     effects <- effects[which(names(effects) != "eps")]
   }
-  # in case of the data is not provided as indexes
+  # in case the data is not provided as indexes
   for (ind in which(!sapply(effects, is.integer))){
     effects[[ind]] <- as.integer(as.factor(effects[[ind]]))
   }
@@ -1658,11 +1676,13 @@ make_stan_data_object <- function(prior_obj){
   ####### data/likelihood info
 
   if (prior_obj$family == "binomial" && length(prior_obj$inference_data$Ntrials) != res$n) stop("Ntrials must be provided, and have the same length as observations.", call. = FALSE)
+  if (prior_obj$family == "poisson" && length(prior_obj$inference_data$E) != res$n) stop("E must have the same length as observations if provided.", call. = FALSE)
 
-  # the format of the data depends on the likelihood, sending it both as imtegers and as reals
+  # the format of the data depends on the likelihood, sending it both as integers and as reals
   res$y_cont <- y
   res$y_disc <- as.integer(y)
   res$Ntrials <- if (prior_obj$family == "binomial") as.integer(prior_obj$inference_data$Ntrials) else rep(0, res$n)
+  res$e_disc <- if (prior_obj$family == "poisson") as.integer(prior_obj$inference_data$E) else rep(0, res$n)
   res$likelihood <- if (prior_obj$family == "gaussian") 1 else if (prior_obj$family == "binomial") 2 else if (prior_obj$family == "poisson") 3 else stop("Not valid family.", call. = FALSE)
   res$add_res <- add_res
 
@@ -1797,7 +1817,7 @@ make_besag_prec_mat <- function(graph_path){
     # how many -1's on this row:
     no_neighb <- all_lines[[ind+1]][2]
     stopifnot(length(all_lines[[ind+1]])-2 == no_neighb)
-    mat[ind, all_lines[[ind+1]][c(-1, -2)]] <- -1
+    if (no_neighb > 0) mat[ind, all_lines[[ind + 1]][c(-1, -2)]] <- -1
     mat[ind, ind] <- no_neighb
 
   }
@@ -1823,8 +1843,11 @@ make_covariance_matrices <- function(data){
 # index is the index vector for each random effect
 make_covariance_matrix <- function(index){
 
+  
   # if this is a vector of data and not indexes, we make an index vector instead. but this should give an error somewhere else
-  if (!is.integer(index)) {stop("The indexes for random effects must be integers.", call. = FALSE); index <- 1:length(index)}
+  if (any(round(index) != index)){
+    stop("The random effects must have integer indexes.", call. = FALSE)
+  }
 
   # the size of the dataset
   n <- length(index)
@@ -1833,7 +1856,7 @@ make_covariance_matrix <- function(index){
   for (i_r in 1:n){
     mat[i_r, index == index[i_r]] <- 1
   }
-
+  
   return(Matrix(mat))
 
 }
@@ -1919,17 +1942,18 @@ fix_size_covmat <- function(new_mat, old_mat, index, eff_name){
 
 }
 
+max_pr_num <- function() return(6)
 
 get_variance_prior_number <- function(prior_names){
 
-  pr_names <- c("jeffreys", "pc0", "invgam", "hc", "")
+  pr_names <- c("jeffreys", "pc0", "invgam", "hc", "hn", "")
 
   pr_num <- c()
   for (i in 1:length(prior_names)){
     pr_num[i] <- which(pr_names == prior_names[i])
   }
 
-  pr_num[pr_num == 5] <- 0
+  pr_num[pr_num == max_pr_num()] <- 0
 
   return(pr_num)
 
@@ -2019,7 +2043,7 @@ make_subtree <- function(node_data, split_id){
 #' see also Details), or to use the likelihood and data to get the posterior (TRUE, default).
 #' @param print_prior Whether to print a text with the chosen prior or not (default TRUE)
 #' @param ... Other values to be sent to INLA.
-#' Useful arguments include \code{Ntrials} for the binomial likelihood.
+#' Useful arguments include \code{Ntrials} for the binomial likelihood and \code{E} (mean E_i in E_i*exp(eta_i)) for the Poisson likelihood.
 #' We set the default value of \code{num.threads} to 1 (this can however be changed).
 #' See \link[INLA]{inla} for details.
 #' Can be anything sent to \link[INLA]{inla} except for \code{control.expert} and arguments that specify priors.
@@ -2088,8 +2112,8 @@ inference_inla <- function(prior_obj, use_likelihood = TRUE,
 
   # replace jeffreys prior with gaussian prior on total variance if no likelihood
   if (!use_likelihood) {
-    inla_jpr_data$totvar_prior_info[inla_jpr_data$totvar_prior_info[,1] == 1,1] <- 5
-    inla_jpr_data$totvar_prior_numbers[inla_jpr_data$totvar_prior_numbers == 1] <- 5
+    inla_jpr_data$totvar_prior_info[inla_jpr_data$totvar_prior_info[,1] == 1,1] <- max_pr_num()
+    inla_jpr_data$totvar_prior_numbers[inla_jpr_data$totvar_prior_numbers == 1] <- max_pr_num()
   }
 
   if (!is.null(input_args$control.expert)){
@@ -2220,6 +2244,7 @@ make_inla_formula <- function(prior_obj){
 make_inla_data_object <- function(prior_obj, input_args){
 
   if (length(input_args) > 0 && length(input_args$Ntrials) > 0 && length(prior_obj$inference$Ntrials) == 0) prior_obj$inference_data$Ntrials <- input_args$Ntrials
+  if (length(input_args) > 0 && length(input_args$E) > 0 && length(prior_obj$inference$E) == 0) prior_obj$inference_data$E <- input_args$E
 
   return(make_stan_data_object(prior_obj))
 
@@ -2414,7 +2439,11 @@ choose_prior_lpdf <- function(x, prior_number, param){
     return(
       x/2 - log(pi) - log(param[1] + exp(x)/param[1])
     )
-  } else if (prior_number == 5) {
+  } else if (prior_number == 5) { # half-normal(scale) (stdev in normal)
+    return(
+      -0.5*log(2*pi) - log(param[1]) + x/2 - exp(x)/(2*param[1]^2)
+    )
+  } else if (prior_number == max_pr_num()) {
     return(dnorm(x, 0, 1, log = TRUE));
   } else {
     return(0)
@@ -2428,7 +2457,7 @@ choose_prior_lpdf <- function(x, prior_number, param){
 joint_prior <- function(theta_prec){
 
   args_123ysg35ovat <- args_123ysg35ovat # hack to avoid note about variable not existing
-  args_123 <- args_123ysg35ovat # weird name to avoid problems with global environment
+  args_123 <- args_123ysg35ovat # weird name to hopefully avoid problems with global environment
 
   # transform from log precision to log variance
   # if Gaussian likelihood, put residual variance at the end
@@ -2658,7 +2687,7 @@ get_prior_expr_text <- function(prior_data, node_data, param = c("cw", "totvar",
   if (param == "cw" || param == "totvar"){
 
     if (param == "cw") param_type <- if (prior_data$prior %in% c("pc0", "hc")) "sigma" else "sigma^2"
-    if (param == "totvar") param_type <- if (prior_data$prior %in% c("pc0", "hc")) "sqrt(V)" else "V"
+    if (param == "totvar") param_type <- if (prior_data$prior %in% c("pc0", "hc", "hn")) "sqrt(V)" else "V"
     param_name <- paste0(param_type, "[", prior_data$name, "]")
 
 
@@ -2669,7 +2698,9 @@ get_prior_expr_text <- function(prior_data, node_data, param = c("cw", "totvar",
     } else if (prior_data$prior == "invgam"){
       prior_expr <- paste0("InvGam(", prior_data$param[1], ", ", prior_data$param[2], ")\n")
     } else if (prior_data$prior == "hc"){
-      prior_expr <- paste0("HC(", prior_data$param[1], ")\n")
+      prior_expr <- paste0("Half-Cauchy(", prior_data$param[1], ")\n")
+    } else if (prior_data$prior == "hn"){
+      prior_expr <- paste0("Half-normal(", prior_data$param[1], ")\n")
     }
 
   } else { # weight
@@ -3090,12 +3121,13 @@ makemyprior_models <- function(type = c("prior", "latent", "likelihood"), select
 makemyprior_options_prior <- function(prs = NULL){
 
   priors_var <- data.frame(
-    internal_name = c("pc", "hc", "invgam", "jeffreys"),
-    full_name = c("PC_0", "Half-Cauchy", "Inverse Gamma", "Jeffreys'"),
-    which_param = c("st.dev.", "st.dev.", "variance", "variance"),
-    params = c("U and alpha in Prob(stdev > U) = alpha", "scale", "shape and scale", "none"),
+    internal_name = c("pc", "hc", "hn", "invgam", "jeffreys"),
+    full_name = c("PC_0", "Half-Cauchy", "Half-normal", "Inverse Gamma", "Jeffreys'"),
+    which_param = c("st.dev.", "st.dev.", "st.dev", "variance", "variance"),
+    params = c("U and alpha in Prob(stdev > U) = alpha", "scale", "scale", "shape and scale", "none"),
     example = c("'list(prior = \"pc\", param = c(U, alpha))'",
-                "'list(prior = \"hc\", param = shape)'",
+                "'list(prior = \"hc\", param = scale)'",
+                "'list(prior = \"hn\", param = scale)'",
                 "'list(prior = \"invgam\", param = c(shape, scale))'",
                 "'list(prior = \"jeffreys\")'")
   )
@@ -3201,15 +3233,15 @@ makemyprior_options_latent <- function(lts = NULL){
         "--------  ", latent[ind,"full_name"], "  --------\n",
         "Internal name: \"", latent[ind, "internal_name"], "\".\n",
         "Options: ", latent[ind, "options"],
-        if (latent[ind, "options"] != "") ".\n" else ".",
+        if (latent[ind, "options"] != "") "\n" else "",
         latent[ind, "details"],
-        if (latent[ind, "details"] != "") ".\n" else "."
+        if (latent[ind, "details"] != "") "\n" else ""
         ,
         sep = "")
       cat("\n")
     }
 
-    cat("For more details, see 'vignette(\"make_prior\", package = \"makemyprior\")'.\n")
+    # cat("For more details, see 'vignette(\"make_prior\", package = \"makemyprior\")'.\n")
 
   }
 
@@ -3229,7 +3261,9 @@ makemyprior_options_likelihood <- function(lks = NULL){
                 "inference with Stan, and to 'inference_inla' for inference with inla.\n",
                 "Default variance prior is PC(", default_pc_prior_param("binomial")[1], ", ",
                        default_pc_prior_param("binomial")[2], ").\n"),
-                paste0("Default variance prior is PC(", default_pc_prior_param("poisson")[1], ", ",
+                paste0("If the mean E_i (in E_i * exp(eta_i) where eta_i is the linear predictor) is not 1 for all observations, ",
+                       "it must be provided to the data object for inference with Stan, and to 'inference_inla' for inference with inla.\n",
+                  "Default variance prior is PC(", default_pc_prior_param("poisson")[1], ", ",
                 default_pc_prior_param("poisson")[2], ").\n"))
   )
 
@@ -3357,7 +3391,7 @@ makemyprior_example_model <- function(seed = 1){
 #' the same as specified in the formula, with the residual variance at the end for a Gaussian likelihood. To be sure,
 #' you can use \link[makemyprior]{get_parameter_order} to check the order.
 #' @param prior_data An object from \link[makemyprior]{make_eval_prior_data}.
-#' @return Logarithm of the prior density
+#' @return Logarithm of the prior density.
 #' @details Note that a Jeffreys' prior is improper and sampling with the prior only will not work when it
 #' is used. For sampling from the prior (for example for debugging), use a proper prior for all parameters instead.
 #'
@@ -3366,6 +3400,9 @@ makemyprior_example_model <- function(seed = 1){
 #' \code{make_prior}, that only contains what is needed to compute the joint prior. Since the HD prior is chosen on
 #' total variances and variance proportions, some additional information is needed
 #' to compute the Jacobian for the joint prior. To improve the speed, we do this once before evaluating the prior.
+#' 
+#' Expert option: \code{make_eval_prior_data} can also be used to extract the prior to be used with 'regular' INLA. See
+#' examples for how this can be done.
 #' @examples
 #'
 #' ex_model <- makemyprior_example_model()
@@ -3417,7 +3454,29 @@ makemyprior_example_model <- function(seed = 1){
 #'   }
 #'
 #' }
-#'
+#' 
+#' \dontrun{
+#' 
+#' # How an HD prior can be computed with \code{makemyprior}, and then sent to regular INLA. Expert option.
+#' # Note the use of the hidden \code{make_jpr}-function.
+#' # Also note that the order of the parameters must be the same as in the call to \code{make_prior}.
+#' # The residual variance is put in the correct place by \code{make_jpr}.
+#' data <- list(
+#'   a = rep(1:10, each = 100),
+#'   b = rep(1:100, times = 10)
+#' )
+#' set.seed(1); data$y <- rnorm(100, 0, 0.4)[data$a] + rnorm(100, 0, 0.6)[data$b] + rnorm(1000, 0, 1)
+#' prior <- make_prior(y ~ mc(a) + mc(b), data, family = "gaussian",
+#'                     prior = list(tree = "s1 = (a, b); s2 = (s1, eps)",
+#'                                  w = list(s2 = list(prior = "pc0", param = 0.25)),
+#'                                  V = list(s2 = list(prior = "pc", param = c(3, 0.05)))),
+#'                     intercept_prior = c(0, 1000))
+#' jpr_dat <- make_eval_prior_data(prior)
+#' res <- inla(y ~ f(a) + f(b),
+#'             data = data,
+#'             control.fixed = list(prec.intercept = 1/1000^2),
+#'             control.expert = list(jp = makemyprior:::make_jpr(jpr_dat)))
+#' }
 #' @export
 eval_joint_prior <- function(theta, prior_data){
 

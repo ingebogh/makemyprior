@@ -131,7 +131,7 @@
 #' @examples
 #' \dontrun{
 #'
-#' vignette("neonatal_mortaily", package = "makemyprior")
+#' vignette("neonatal_mortality", package = "makemyprior")
 #' }
 #'
 #' if (interactive() && requireNamespace("rstan")){
