@@ -17,7 +17,7 @@ mc(
 \arguments{
 \item{label}{Name of the component (short names is an advantage as they are used in the app), no default (MUST be provided)}
 
-\item{model}{Type of model, default is "iid" (see list of models: \link[makemyprior]{makemyprior_models}).}
+\item{model}{Type of model, default is "iid" (see list of models: \link[makemyprior]{makemyprior_models}, \code{makemyprior_models("latent")}).}
 
 \item{constr}{Sum-to-zero constraints on component (default TRUE)}
 

@@ -62,9 +62,14 @@ real latent_model_lpdf(vector eff, int effect_type, real scaling_factor, int[] b
     if (effect_type == 9) res += normal_lpdf(sum(eff) | 0, 1*sqrt(n)); // (soft) sum to zero
   } else if (effect_type == 10 || effect_type == 11) { // rw1
     res += -0.5 * scaling_factor * dot_self(eff[1:(n-1)]-eff[2:n]);
-    if (effect_type == 11) res += normal_lpdf(sum(eff) | 0, 1*sqrt(n)); // (soft) sum to zero
+    if (effect_type == 11){
+      res += normal_lpdf(sum(eff) | 0, 1*sqrt(n)); // (soft) sum to zero
+    }
   } else { // 1, 2, 6, 7 (iid and structured effect)
     res += normal_lpdf(eff | 0, 1);
+    if (effect_type == 2 || effect_type == 7){
+      res += normal_lpdf(sum(eff) | 0, 1*sqrt(n)); // (soft) sum to zero
+    }
   }
 
   return(res);

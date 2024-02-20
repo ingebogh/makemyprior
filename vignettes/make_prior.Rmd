@@ -43,9 +43,9 @@ available in ``makemyprior``:
 
 Consider a random intercept model 
 $y_{i,j} = a_i + \varepsilon_{i,j}$ for $i,j = 1, \dots, 10$,
-where $a_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_{\mathrm{a}}^2)$ is a group
+where $a_i \overset{\text{iid}}{\sim} N(0, \sigma_{\mathrm{a}}^2)$ is a group
 effect and
-$\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_{\varepsilon}^2)$ is
+$\varepsilon_i \overset{\text{iid}}{\sim} N(0, \sigma_{\varepsilon}^2)$ is
 a residual effect.
 We define the variance proportion $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = \frac{\sigma_{\mathrm{a}}^2}{\sigma_{\mathrm{a}}^2 + \sigma_{\varepsilon}^2}$.
 Then we
@@ -57,17 +57,17 @@ different PC prior distributions as:
 * $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} \sim \mathrm{PC}_{\mathrm{0}}(m)$ with 
 	$\mathrm{Prob}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} > m) = 0.5$ so that $m$ defines the median, and shrinkage towards
 	$\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = 0$, 
-	i.e., the base model is a model with only $\bm{\varepsilon}$.
+	i.e., the base model is a model with only $\pmb{\varepsilon}$.
 * $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} \sim \mathrm{PC}_{\mathrm{1}}(m)$ with 
 	$\mathrm{Prob}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} > m) = 0.5$ so that $m$ defines the median, and shrinkage towards
 	$\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = 1$, 
-	i.e., the base model is a model with only $\bm{a}$.
+	i.e., the base model is a model with only $\pmb{a}$.
 * $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} \sim \mathrm{PC}_{\mathrm{M}}(m, c)$ with
 	$\mathrm{Prob}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} > m) = 0.5$ and
 	$\mathrm{Prob}(\mathrm{logit}(1/4) < \mathrm{logit}(\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}}) - \mathrm{logit}(m) < \mathrm{logit}(3/4)) = c$
 	so that $m$ defines the median, and $c$ says something about how concentrated the distribution is
 	around the median. The shrinkage is towards $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = m$,
-	i.e., the base model is a combination of the effects $\bm{a}$ and $\bm{\varepsilon}$.
+	i.e., the base model is a combination of the effects $\pmb{a}$ and $\pmb{\varepsilon}$.
 
 Note that $\mathrm{PC}_{\mathrm{1}}(m)$ on $\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}}$ is equivalent to
 $\mathrm{PC}_{\mathrm{0}}(1-m)$ on $1-\omega_{\frac{\mathrm{a}}{\mathrm{a+\varepsilon}}} = \omega_{\frac{\mathrm{\varepsilon}}{\mathrm{a+\varepsilon}}}$.
@@ -80,14 +80,14 @@ The priors listed above are denoted ``pc``, ``pc0``. ``pc1``, and ``pcM`` in ``m
 
 Consider the hierarchical model for the $n = m \cdot p$ observations $y_{i,j}$, $i = 1, \ldots p$ and $j = 1, \ldots, m$,  given by
 \begin{align*}
-    y_{i,j}|\eta_{i,j}, \sigma_{\varepsilon}^2 &\sim \mathcal{N}(\eta_{i,j}, \sigma_{\varepsilon}^2), \\
+    y_{i,j}|\eta_{i,j}, \sigma_{\varepsilon}^2 &\sim N(\eta_{i,j}, \sigma_{\varepsilon}^2), \\
     \eta_{i,j} &= \mu + x_i \beta + a_i + b_j,
 \end{align*}
 where $\mu$ is an intercept, $x_i$ is a covariate with coefficient $\beta$, 
-and $a_1, a_2, \ldots, a_p \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_\mathrm{a}^2)$
-and $b_1, b_2, \ldots, b_m \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma_\mathrm{b}^2)$ are random effects.
+and $a_1, a_2, \ldots, a_p \overset{\text{iid}}{\sim} N(0, \sigma_\mathrm{a}^2)$
+and $b_1, b_2, \ldots, b_m \overset{\text{iid}}{\sim} N(0, \sigma_\mathrm{b}^2)$ are random effects.
 The residuals $\varepsilon_1, \varepsilon_2, \dots, \varepsilon_n
-\sim \mathcal{N}(0, \sigma_{\varepsilon}^2)$.
+\sim N(0, \sigma_{\varepsilon}^2)$.
 
 
 ### Make data and linear predictor

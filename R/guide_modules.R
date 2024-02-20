@@ -218,10 +218,11 @@ chosen_pc_guide <- function(node_data, prior_weight, guide_data){
     #removeModal(session)
     showModal(modalDialog(
       visNetwork::visNetworkOutput("graph_guide", height = 250),
-      HTML(paste("Then we use a PC prior on this split. Which of the effects ",
+      HTML(paste("Then we use a PC prior on this split. Of the effects ",
             paste(get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children), sep = "", collapse = " and "),
-            " should be preferred? (This means that we have shrinkage to this effect,",
-            " and is the same as choosing the <b>basemodel</b> of the prior.)",
+            ", which do you want as a <b>basemodel</b> in the prior?", 
+            " (This means that we have shrinkage to this effect/combination of the effects in the prior,",
+            " and that this effect/combination of the effects is preferred unless the data indicates otherwise.)",
             sep = "", collapse = ""
       )),
       HTML("<br>"),
@@ -294,16 +295,20 @@ concentration_pc_guide <- function(node_data, prior_weight, guide_data, input){
       #removeModal(session)
       showModal(modalDialog(
         visNetwork::visNetworkOutput("graph_guide", height = 250),
-        HTML(paste("How concentrated do you want the prior for the amount of variance of ",
-                   pd$w[[gd$x$pr_ind]]$name, " to ",
-                   get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[1]),
-                   " to be?",
-                   sep = "", collapse = ""
+        HTML(paste(
+          "How concentrated do you want the prior for the amount of variance of ",
+          pd$w[[gd$x$pr_ind]]$name, " to ",
+          get_node_name(nd$x, pd$w[[gd$x$pr_ind]]$children[1]),
+          " to be? ",
+          "Choose this value based on <b>how strongly</b> you believe in the prior median value you chose to be ", input$median_guide,
+          " in the previous step. ",
+          "If you are very certain, choose a value close to 1, if you are less certain, choose a smaller value.",
+          sep = "", collapse = ""
         )),
         HTML("<br>"),
         numericInput("conc_param_guide",
                      "",
-                     value = 0.5, min = 0.5, max = 1, step = 0.05, width = "200px"),
+                     value = 0.75, min = 0.5, max = 1, step = 0.05, width = "200px"),
         HTML("<br>"),
         actionButton(paste0("set_conc_param", gd$x$counter_next), "Ok", class = "button_g"),
         title = "Step 2: Choose split prior",
@@ -431,7 +436,8 @@ totvar_part_guide <- function(node_data, prior_totvar, guide_data, .initial_args
                               "",
                               choices = list("PC prior" = "pc0",
                                              "Inverse gamma" = "invgam",
-                                             "Half-Cauchy" = "hc"),
+                                             "Half-Cauchy" = "hc",
+                                             "Half-normal" = "hn"),
                               selected = "pc0")
                } else {
                  radioButtons("var_prior_guide",
@@ -439,7 +445,8 @@ totvar_part_guide <- function(node_data, prior_totvar, guide_data, .initial_args
                               choices = list("Jeffreys'" = "jeffreys",
                                              "PC prior" = "pc0",
                                              "Inverse gamma" = "invgam",
-                                             "Half-Cauchy" = "hc"),
+                                             "Half-Cauchy" = "hc",
+                                             "Half-normal" = "hn"),
                               selected = "jeffreys")
                }),
         div(style = "min-height: 122px; max-height = 122px", column(6,
@@ -491,7 +498,8 @@ cw_part_guide <- function(node_data, prior_cw, guide_data){
                             "",
                             choices = list("PC prior" = "pc0",
                                            "Inverse gamma" = "invgam",
-                                           "Half-Cauchy" = "hc"),
+                                           "Half-Cauchy" = "hc",
+                                           "Half-normal" = "hn"),
                             selected = "pc0")
         ),
         div(style = "min-height: 122px; max-height = 122px", column(6,
@@ -557,6 +565,8 @@ make_par1_box_guide <- function(id, input){
       numericInput(id, h6("Shape"), 1, 0, Inf, step = 1)
     } else if (input$var_prior_guide == "hc"){
       numericInput(id, h6("Scale"), 25, 0, Inf, step = 1)
+    } else if (input$var_prior_guide == "hn"){
+      numericInput(id, h6("Scale"), 1, 0, Inf, step = 1)
     } else {
       # nothing
     }
@@ -573,6 +583,8 @@ make_par2_box_guide <- function(id, input){
     } else if (input$var_prior_guide == "invgam"){
       numericInput(id, h6("Scale"), 5e-5, 0, Inf, step = 0.01)
     } else if (input$var_prior_guide == "hc"){
+      # nothing
+    } else if (input$var_prior_guide == "hn"){
       # nothing
     } else {
       # nothing

@@ -218,7 +218,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # update the prior family on total variance or CW priors, and if the family is changed, reset the numeric values
+  # update the prior family on total variance or CW priors, and if the prior family is changed, reset the numeric values
   observeEvent(is.null(input$var_prior), {
   # observeEvent(is.null(input$var_prior) & input$par1 & input$par2, {
     if (length(input$current_node_id) == 1 && is_top_node(nd$x, input)){
@@ -260,7 +260,7 @@ server <- function(input, output, session) {
     if (input$var_prior %in% c("pc0", "invgam")){
       showElement("par1")
       showElement("par2")
-    } else if (input$var_prior == "hc"){
+    } else if (input$var_prior %in% c("hc", "hn")){
       showElement("par1")
       hideElement("par2")
     } else {
@@ -656,7 +656,7 @@ server <- function(input, output, session) {
       }
       v[[2]] <- actionButton("quit_guide2", "Quit guide", class = "button_quit", title = "Quit the guide.")
     } else {
-      v[[1]] <- actionButton("make_plot", "Plot priors", class = "button1", value = TRUE, title = "Plot the prior distributions you have chosen.")
+      v[[1]] <- actionButton("make_plot", "Plot priors", class = "button_quit", value = TRUE, title = "Plot the prior distributions you have chosen.")
     }
     return(v)
   }
@@ -702,7 +702,8 @@ server <- function(input, output, session) {
   output$no_pc <- renderText({
     t1 <- ""
     if (shiny::getShinyOption(".initial_args")$.no_pc)
-      t1 <- paste0(t1, "\nWill not compute the PC priors on splits before the app closes.")
+      t1 <- paste0(t1, paste0("PC priors on splits are not computed before the app closes. ",
+                              "This means that the PC priors on splits are not plotted in the GUI."))
     t1
   })
 

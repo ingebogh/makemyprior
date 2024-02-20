@@ -19,7 +19,7 @@ you can use \link[makemyprior]{get_parameter_order} to check the order.}
 \item{prior_obj}{Object of class \code{mmp_prior}, see \link[makemyprior]{make_prior}.}
 }
 \value{
-Logarithm of the prior density
+Logarithm of the prior density.
 }
 \description{
 Function for evaluating the joint variance prior stored in \code{prior_obj}. To compute the joint prior, the functions needs
@@ -37,6 +37,9 @@ The
 \code{make_prior}, that only contains what is needed to compute the joint prior. Since the HD prior is chosen on
 total variances and variance proportions, some additional information is needed
 to compute the Jacobian for the joint prior. To improve the speed, we do this once before evaluating the prior.
+
+Expert option: \code{make_eval_prior_data} can also be used to extract the prior to be used with 'regular' INLA. See
+examples for how this can be done.
 }
 \examples{
 
@@ -90,4 +93,26 @@ if (interactive()){
 
 }
 
+\dontrun{
+
+# How an HD prior can be computed with \code{makemyprior}, and then sent to regular INLA. Expert option.
+# Note the use of the hidden \code{make_jpr}-function.
+# Also note that the order of the parameters must be the same as in the call to \code{make_prior}.
+# The residual variance is put in the correct place by \code{make_jpr}.
+data <- list(
+  a = rep(1:10, each = 100),
+  b = rep(1:100, times = 10)
+)
+set.seed(1); data$y <- rnorm(100, 0, 0.4)[data$a] + rnorm(100, 0, 0.6)[data$b] + rnorm(1000, 0, 1)
+prior <- make_prior(y ~ mc(a) + mc(b), data, family = "gaussian",
+                    prior = list(tree = "s1 = (a, b); s2 = (s1, eps)",
+                                 w = list(s2 = list(prior = "pc0", param = 0.25)),
+                                 V = list(s2 = list(prior = "pc", param = c(3, 0.05)))),
+                    intercept_prior = c(0, 1000))
+jpr_dat <- make_eval_prior_data(prior)
+res <- inla(y ~ f(a) + f(b),
+            data = data,
+            control.fixed = list(prec.intercept = 1/1000^2),
+            control.expert = list(jp = makemyprior:::make_jpr(jpr_dat)))
+}
 }

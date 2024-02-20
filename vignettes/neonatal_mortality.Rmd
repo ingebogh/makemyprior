@@ -37,10 +37,10 @@ clusters in each of the $n = 47$ counties (see e.g. @fuglstad2020 for a map of t
 
 * $b_{i,j}$ is the number of live births,
 * $y_{i,j}$ is the number of neonatal deaths,
-* $\mu$ is an intercept with a $\mathcal{N}(0, 1000^2)$ prior,
-* $\beta$ is a coefficient with a $\mathcal{N}(0, 1000^2)$ prior for $x_{i,j}$, which is an indicator classifying cluster $j$ in county $i$ as urban ($x_{i,j} = 1$) or rural ($x_{i,j} = 0$),
-* $\nu_i \sim \mathcal{N}_n(0, \sigma_{\nu}^2)$ is an i.i.d. random effect for cluster
-* $v_i \sim \mathcal{N}_n(0, \sigma_v^2)$ is an i.i.d. random effect for county, and
+* $\mu$ is an intercept with a $N(0, 1000^2)$ prior,
+* $\beta$ is a coefficient with a $N(0, 1000^2)$ prior for $x_{i,j}$, which is an indicator classifying cluster $j$ in county $i$ as urban ($x_{i,j} = 1$) or rural ($x_{i,j} = 0$),
+* $\nu_i \sim N_n(0, \sigma_{\nu}^2)$ is an i.i.d. random effect for cluster
+* $v_i \sim N_n(0, \sigma_v^2)$ is an i.i.d. random effect for county, and
 * $\mathbf{u}$ is a Besag effect on county with variance $\sigma_u^2$ and a sum-to-zero constraint.
 
 We need a neighborhood graph for the counties, which is found in ``makemyprior``. We scale the Besag effect to have 

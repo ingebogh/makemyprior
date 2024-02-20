@@ -15,7 +15,7 @@ see also Details), or to use the likelihood and data to get the posterior (TRUE,
 \item{print_prior}{Whether to print a text with the chosen prior or not (default TRUE)}
 
 \item{...}{Other values to be sent to INLA.
-Useful arguments include \code{Ntrials} for the binomial likelihood.
+Useful arguments include \code{Ntrials} for the binomial likelihood and \code{E} (mean E_i in E_i*exp(eta_i)) for the Poisson likelihood.
 We set the default value of \code{num.threads} to 1 (this can however be changed).
 See \link[INLA]{inla} for details.
 Can be anything sent to \link[INLA]{inla} except for \code{control.expert} and arguments that specify priors.}

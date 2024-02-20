@@ -129,7 +129,8 @@ plot_pc_w_nocalc <- function(prior_data, node_data){
   over <- paste0(as.character(get_node_name(node_data, get_leaf_nodes(node_data, prior_data$param$above_node))), sep = "", collapse = ",")
   title <- as.expression(bquote(omega[frac(.(over), .(under))]))
 
-  return(data.frame(x = rep(prior_data$param$median, 10), y = seq(0, 1, length.out = 10), param = as.character(title)))
+  # return(data.frame(x = rep(prior_data$param$median, 10), y = seq(0, 1, length.out = 10), param = as.character(title)))
+  return(data.frame(x = c(0, 1, NA, NA), y = c(NA, NA, 0, 1), param = as.character(title)))
 
 }
 
@@ -524,8 +525,8 @@ plot_posterior_stan <- function(obj, param = c("prior", "variance", "stdev", "pr
     if (prior){
       df <- make_dataframe_for_plotting("both", obj)
       gg <- ggplot() +
-        geom_histogram(data = df$posterior, mapping = aes(x = .data$x, y = .data$..density..), col = gray(0.5), fill = "#8E8D8A", bins = 40) +
-        geom_line(data = df$pri, mapping = aes(x = .data$x, y = .data$y), na.rm = TRUE) +
+        geom_histogram(data = df$posterior, mapping = aes(x = x, y = after_stat(density)), col = gray(0.5), fill = "#8E8D8A", bins = 40) +
+        geom_line(data = df$pri, mapping = aes(x = x, y = y), na.rm = TRUE) +
         facet_wrap(~param, labeller = label_parsed, scales = "free") +
         # theme(strip.text = element_text(size = 14, color = "white")) +
         ylab("Density") +
@@ -537,7 +538,7 @@ plot_posterior_stan <- function(obj, param = c("prior", "variance", "stdev", "pr
               strip.text = element_text(color = "black", size = 15))
     } else {
       df <- make_dataframe_for_plotting("posterior", obj)
-      gg <- ggplot(df, aes(x = .data$x, y = .data$..density..)) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
+      gg <- ggplot(df, aes(x = x, y = after_stat(density))) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
         facet_wrap(~param, labeller = label_parsed, scales = "free") +
         # theme(strip.text = element_text(size = 14, color = "white")) +
         ylab("Density") +
@@ -601,7 +602,7 @@ plot_posterior_fixed <- function(obj){
     }
 
     gg <- ggplot() +
-      geom_histogram(data = df_post, mapping = aes(x = .data$x, y = .data$..density..), col = gray(0.5), fill = "#8E8D8A", bins = 40) +
+      geom_histogram(data = df_post, mapping = aes(x = x, y = after_stat(density)), col = gray(0.5), fill = "#8E8D8A", bins = 40) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +
@@ -633,7 +634,7 @@ plot_posterior_fixed <- function(obj){
     }
 
     gg <- ggplot() +
-      geom_line(df_post, mapping = aes(x = .data$x, y = .data$y)) +
+      geom_line(df_post, mapping = aes(x = x, y = after_stat(density))) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +
@@ -679,7 +680,7 @@ plot_posterior_variance <- function(obj){
   if (is(obj, "mmp_stan")){
 
     df <- df_posterior_variances(obj, "variance")
-    gg <- ggplot(df, aes(x = .data$x, y = .data$..density..)) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
+    gg <- ggplot(df, aes(x = x, y = after_stat(density))) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +
@@ -694,7 +695,7 @@ plot_posterior_variance <- function(obj){
 
     df <- df_posteriors_inla(obj, "variance")
     gg <- ggplot() +
-      geom_line(df, mapping = aes(x = .data$x, y = .data$y)) +
+      geom_line(df, mapping = aes(x = x, y = y)) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +
@@ -718,7 +719,7 @@ plot_posterior_stdev <- function(obj){
   if (is(obj, "mmp_stan")){
 
     df <- df_posterior_variances(obj, "stdev")
-    gg <- ggplot(df, aes(x = .data$x, y = .data$..density..)) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
+    gg <- ggplot(df, aes(x = x, y = after_stat(density))) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +
@@ -733,7 +734,7 @@ plot_posterior_stdev <- function(obj){
 
     df <- df_posteriors_inla(obj, "stdev")
     gg <- ggplot() +
-      geom_line(df, mapping = aes(x = .data$x, y = .data$y)) +
+      geom_line(df, mapping = aes(x = x, y = y)) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +
@@ -757,7 +758,7 @@ plot_posterior_precision <- function(obj){
   if (is(obj, "mmp_stan")){
 
     df <- df_posterior_variances(obj, "precision")
-    gg <- ggplot(df, aes(x = .data$x, y = .data$..density..)) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
+    gg <- ggplot(df, aes(x = x, y = after_stat(density))) + geom_histogram(col = gray(0.5), fill = "#8E8D8A", bins = 40) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       ylab("Density") +
       theme(axis.title.x = element_blank()) +
@@ -771,7 +772,7 @@ plot_posterior_precision <- function(obj){
 
     df <- df_posteriors_inla(obj, "precision")
     gg <- ggplot() +
-      geom_line(df, mapping = aes(x = .data$x, y = .data$y)) +
+      geom_line(df, mapping = aes(x = x, y = y)) +
       facet_wrap(~param, labeller = label_parsed, scales = "free") +
       # theme(strip.text = element_text(size = 14, color = "white")) +
       ylab("Density") +

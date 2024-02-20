@@ -219,10 +219,10 @@ clicked_node_action <- function(node_data, prior_weight, prior_totvar, prior_cw,
 get_par2_max <- function(prior_name) if (prior_name == "pc0") 1 else Inf
 get_par2_step <- function(prior_name) if (prior_name == "pc0") 0.05 else 0.01
 
-get_par1_label <- function(prior_name) if (prior_name == "pc0") "U" else if (prior_name == "invgam") "Shape" else if (prior_name == "hc") "Scale"
+get_par1_label <- function(prior_name) if (prior_name == "pc0") "U" else if (prior_name == "invgam") "Shape" else if (prior_name %in% c("hc", "hn")) "Scale"
 get_par2_label <- function(prior_name) if (prior_name == "pc0") "alpha" else if (prior_name == "invgam") "Scale"
 
-get_par1_default_val <- function(prior_name) if (prior_name == "pc0") 3 else if (prior_name == "invgam") 1 else if (prior_name == "hc") 25
+get_par1_default_val <- function(prior_name) if (prior_name == "pc0") 3 else if (prior_name == "invgam") 1 else if (prior_name == "hc") 25 else if (prior_name == "hn") 1
 get_par2_default_val <- function(prior_name) if (prior_name == "pc0") 0.05 else if (prior_name == "invgam") 5e-5
 
 

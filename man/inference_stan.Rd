@@ -33,7 +33,8 @@ stored somewhere else than in \code{tempdir()} or the package directory (checkin
   \item{\code{init}}{initial value of the model parameters on internal parameterization (log-variances and covariate coefficients)}
   \item{\code{seed}}{seed value for random number generation}
 }
-See \link[rstan]{sampling} for more details. Note that for inference with \code{stan}, the \code{Ntrials} argument must be included in the data object, and
+See \link[rstan]{sampling} for more details. Note that for inference with \code{stan}, the \code{Ntrials} (the size parameter for binomial likelihood) and 
+\code{E} (the mean E_i in  E_i*exp(eta_i) for Poisson likelihood) argument must be included in the data object, and
 cannot be provided to this function.}
 }
 \value{

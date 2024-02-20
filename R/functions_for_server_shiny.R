@@ -932,7 +932,7 @@ update_var_prior <- function(prior_data, input){
 update_var_prior_params <- function(prior_name, params){
   if (prior_name %in% c("pc0", "invgam")){
     return(params)
-  } else if (prior_name == "hc"){
+  } else if (prior_name %in% c("hc", "hn")){
     return(c(params[1], 0))
   } else if (prior_name == "jeffreys"){
     return(c(0, 0))
@@ -1570,7 +1570,7 @@ make_model_eq_rexpr <- function(initial_args){
   }
 
   if (initial_args$.no_pc){
-    c(meq, "\nWill not compute the PC priors on splits before the app closes.")
+    c(meq, "\nPC priors on splits are not computed before the app closes. This means that the PC priors on splits are not plotted in the GUI.")
   }
 
   return(meq)

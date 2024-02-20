@@ -24,7 +24,7 @@ Simulated neonatal mortality data with 323 observations.
 \examples{
 \dontrun{
 
-vignette("neonatal_mortaily", package = "makemyprior")
+vignette("neonatal_mortality", package = "makemyprior")
 }
 
 if (interactive() && requireNamespace("rstan")){

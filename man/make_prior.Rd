@@ -55,6 +55,7 @@ Prior object.
 Make a prior object with all necessary information about the prior and model.
 The object can either be sent to \link[makemyprior]{makemyprior_gui}
 or used directly for inference with Stan (\link[makemyprior]{inference_stan}) or INLA (\link[makemyprior]{inference_inla}).
+\link[makemyprior]{eval_joint_prior} can be used to evaluate the prior.
 }
 \details{
 See \link[makemyprior]{makemyprior_models} for details on available priors and likelihoods.

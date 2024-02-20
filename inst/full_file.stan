@@ -61,6 +61,7 @@ data {
   real y_cont[n]; // continuous observations
   int y_disc[n]; // discrete observations
   int Ntrials[n]; // number of trials for binomial observations
+  int e_disc[n]; // E_i in E_i * exp(eta_i)
 
   int use_index_matrix[n_r]; // whether we use the index matrix of each effect or not
   matrix[n, n] mega_matrix[n_r]; // matrices for structured effects
@@ -135,7 +136,7 @@ model {
   } else if (likelihood == 2){
     target += binomial_logit_lpmf(y_disc | Ntrials, eta);
   } else if (likelihood == 3){
-    target += poisson_log_lpmf(y_disc | eta);
+    target += poisson_log_lpmf(y_disc | eta + to_vector(log(e_disc)));
   } else {
     target += 0; // no likelihood, i.e., sample from prior
   }
