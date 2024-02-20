@@ -1,5 +1,7 @@
 
 
+utils::globalVariables(c("x", "y")) # fixing note
+
 # plotting the prior and posterior of each effect
 
 # some of these are also used in the shiny-app

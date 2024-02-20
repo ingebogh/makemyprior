@@ -5,7 +5,7 @@
 #' @import ggplot2
 #' @import Matrix
 #' @importFrom grDevices colorRampPalette gray
-#' @importFrom stats as.formula dbeta dexp dgamma dnorm formula median nlm optimize pgamma qgamma quantile rexp rnorm sd
+#' @importFrom stats as.formula dbeta density dexp dgamma dnorm formula median nlm optimize pgamma qgamma quantile rexp rnorm sd
 #' @importFrom utils help
 #' @importFrom rlang .data
 #' @importFrom shinyjs hidden
@@ -3457,7 +3457,8 @@ makemyprior_example_model <- function(seed = 1){
 #' 
 #' \dontrun{
 #' 
-#' # How an HD prior can be computed with \code{makemyprior}, and then sent to regular INLA. Expert option.
+#' # How an HD prior can be computed with \code{makemyprior}, and then sent to regular INLA 
+#' # (expert option).
 #' # Note the use of the hidden \code{make_jpr}-function.
 #' # Also note that the order of the parameters must be the same as in the call to \code{make_prior}.
 #' # The residual variance is put in the correct place by \code{make_jpr}.
