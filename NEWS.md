@@ -1,3 +1,7 @@
+# makemyprior 1.2.0
+
+Fixed minor bugs.
+Updated the guide to be more descriptive.
 
 
 # makemyprior 1.1.0
