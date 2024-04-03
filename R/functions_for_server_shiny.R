@@ -1588,7 +1588,7 @@ guide_make_message_to_user_step1 <- function(guide_data, node_data, input){
 
   # if something happened, reset message
   # if the user has not chosen any nodes, or the chosen node has been removed
-  if (length(input$current_node_id) == 0 || !(input$current_node_id %in% node_data$nodes$id) || (input$merge || input$remove || input$attach || input$detach)){
+  if (length(input$current_node_id) == 0 || !any(input$current_node_id %in% node_data$nodes$id) || (input$merge || input$remove || input$attach || input$detach)){
     msg <- paste(msg, "Click a node! To choose more than one node, you can use a long-click (click and hold for a bit). ")
     # end no nodes clicked
   } else if (length(input$current_node_id) == 1){
