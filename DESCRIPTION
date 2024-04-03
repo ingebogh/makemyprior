@@ -1,7 +1,7 @@
 Package: makemyprior
 Type: Package
 Title: Intuitive Construction of Joint Priors for Variance Parameters
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: c(
     person("Ingeborg", "Hem", email = "ingeborg.hem@ntnu.no", role = c("cre", "aut")),
     person("Geir-Arne", "Fuglstad", role = "aut"),
