@@ -1,3 +1,8 @@
+# makemyprior 1.2.2
+
+Added citation to journal article.
+
+
 # makemyprior 1.2.1
 
 Patch to fix some bugs in the guide.
