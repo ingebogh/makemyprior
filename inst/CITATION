@@ -1,0 +1,18 @@
+bibentry(bibtype = "Article",
+  title        = "{makemyprior}: Intuitive Construction of Joint Priors for Variance Parameters in {R}",
+  author       = c(person(given = "Ingeborg",
+                          family = "Hem",
+                          email = "ingeborg.hem@ntnu.no"),
+                   person(given = "Geir-Arne",
+                          family = "Fuglstad"),
+                   person(given = "Andrea",
+                          family = "Riebler")),
+  journal      = "Journal of Statistical Software",
+  year         = "2024",
+  volume       = "110",
+  number       = "3",
+  pages        = "1--39",
+  doi          = "10.18637/jss.v110.i03",
+  header       = "To cite makemyprior in publications use:"
+)
+
